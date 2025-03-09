@@ -30,7 +30,8 @@ const ULTRAVOX_CORPUS_ID = process.env.ULTRAVOX_CORPUS_ID;
 const AI_NAME = process.env.AI_ASSISTANT_NAME || 'Jimothy';
 const AI_VOICE = process.env.AI_ASSISTANT_VOICE_ID || '3abe60f5-13ed-4e82-ac15-4391d9e5cd9d';
 const AI_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE) || 0.3;
-const AI_FIRST_SPEAKER = process.env.AI_FIRST_SPEAKER || 'FIRST_SPEAKER_USER';
+const OUTBOUND_FIRST_SPEAKER = process.env.OUTBOUND_FIRST_SPEAKER || 'FIRST_SPEAKER_USER';
+const INBOUND_FIRST_SPEAKER = process.env.INBOUND_FIRST_SPEAKER || 'FIRST_SPEAKER_AGENT';
 
 // Process system prompt by replacing variables
 function processSystemPrompt(prompt) {
@@ -43,6 +44,47 @@ function getSystemPrompt(isOutbound = false) {
         process.env.OUTBOUND_SYSTEM_PROMPT :
         process.env.INBOUND_SYSTEM_PROMPT;
     return processSystemPrompt(prompt);
+}
+
+// Add this function near the top with other utility functions
+async function verifyCorpusStatus() {
+    return new Promise((resolve, reject) => {
+        const request = https.request(`${ULTRAVOX_API_URL.replace('/calls', '')}/corpora/${ULTRAVOX_CORPUS_ID}`, {
+            method: 'GET',
+            headers: {
+                'X-API-Key': ULTRAVOX_API_KEY
+            }
+        });
+
+        let data = '';
+        
+        request.on('response', (response) => {
+            response.on('data', chunk => data += chunk);
+            response.on('end', () => {
+                try {
+                    const corpus = JSON.parse(data);
+                    console.log('Corpus status:', corpus.stats.status);
+                    
+                    if (corpus.stats.status === 'CORPUS_STATUS_READY') {
+                        resolve(true);
+                    } else {
+                        console.warn(`Corpus not ready. Status: ${corpus.stats.status}`);
+                        resolve(false);
+                    }
+                } catch (error) {
+                    console.error('Error parsing corpus status:', error);
+                    reject(error);
+                }
+            });
+        });
+
+        request.on('error', (error) => {
+            console.error('Error checking corpus status:', error);
+            reject(error);
+        });
+
+        request.end();
+    });
 }
 
 // Create Ultravox call and get join URL
@@ -58,25 +100,39 @@ async function createUltravoxCall(options = {}) {
         model: 'fixie-ai/ultravox',
         voice: AI_VOICE,
         temperature: AI_TEMPERATURE,
-        firstSpeaker: AI_FIRST_SPEAKER,
+        firstSpeaker: isOutbound ? OUTBOUND_FIRST_SPEAKER : INBOUND_FIRST_SPEAKER,
         medium: { "twilio": {} },
-        recordingEnabled: true
+        recordingEnabled: true,
+        selectedTools: []
     };
 
-    // Add queryCorpus tool if corpus ID is available
+    // Add queryCorpus tool with verification
     if (ULTRAVOX_CORPUS_ID) {
-        callConfig.selectedTools = [
-            {
-                toolName: "queryCorpus",
-                parameterOverrides: {
-                    corpus_id: ULTRAVOX_CORPUS_ID,
-                    max_results: 5
-                }
+        try {
+            const isCorpusReady = await verifyCorpusStatus();
+            
+            if (isCorpusReady) {
+                console.log(`Adding corpus configuration for ${isOutbound ? 'outbound' : 'inbound'} call. Corpus ID: ${ULTRAVOX_CORPUS_ID}`);
+                
+                callConfig.selectedTools.push({
+                    toolName: "queryCorpus",
+                    parameterOverrides: {
+                        corpus_id: ULTRAVOX_CORPUS_ID,
+                        max_results: 5
+                    }
+                });
+            } else {
+                console.warn('Corpus not in READY state - skipping RAG configuration');
             }
-        ];
+        } catch (error) {
+            console.error('Error verifying corpus status:', error);
+            // Continue without RAG if corpus verification fails
+        }
+    } else {
+        console.warn(`No ULTRAVOX_CORPUS_ID configured for ${isOutbound ? 'outbound' : 'inbound'} call - RAG disabled`);
     }
 
-    console.log('Ultravox API call config:', JSON.stringify(callConfig, null, 2));
+    console.log('Final call configuration:', JSON.stringify(callConfig, null, 2));
 
     return new Promise((resolve, reject) => {
         // Create HTTPS request
@@ -133,6 +189,19 @@ async function createUltravoxCall(options = {}) {
     });
 }
 
+// Add this before the other route definitions
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || '1.0.0',
+        services: {
+            twilio: !!TWILIO_AUTH_TOKEN && !!TWILIO_PHONE_NUMBER,
+            ultravox: !!ULTRAVOX_API_KEY
+        }
+    });
+});
+
 // Home route with basic information
 app.get('/', (req, res) => {
     res.send('Ultravox-Twilio Integration Server. Use /incoming for incoming calls and /outgoing for outgoing calls.');
@@ -146,15 +215,20 @@ app.post('/incoming', async (req, res) => {
         const caller = req.body.From;
         const callSid = req.body.CallSid;
 
-        console.log(`Directly connecting call ${callSid} to Ultravox...`);
+        console.log(`Setting up incoming call ${callSid} with RAG configuration...`);
 
         const response = await createUltravoxCall({
-            isOutbound: false
+            isOutbound: false,
+            // You might want to add specific configuration for incoming calls
+            systemPrompt: process.env.INBOUND_SYSTEM_PROMPT
         });
 
         if (!response || !response.joinUrl) {
             throw new Error('Failed to get a valid join URL from Ultravox');
         }
+
+        // Log the successful RAG setup
+        console.log(`Successfully configured incoming call ${callSid} with RAG support`);
 
         const twiml = new twilio.twiml.VoiceResponse();
         const connect = twiml.connect();
@@ -169,10 +243,8 @@ app.post('/incoming', async (req, res) => {
 
     } catch (error) {
         console.error('Error handling incoming call:', error);
-
         const twiml = new twilio.twiml.VoiceResponse();
         twiml.say('Sorry, there was an error processing your call.');
-
         res.type('text/xml');
         res.send(twiml.toString());
     }
