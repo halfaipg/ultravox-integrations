@@ -4,6 +4,7 @@ import https from 'https';
 import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getToolsForCall } from './utils/tool-manager.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -40,15 +41,64 @@ function processSystemPrompt(prompt) {
 
 // Get appropriate system prompt based on call type
 function getSystemPrompt(isOutbound = false) {
-    const prompt = isOutbound ? 
+    let prompt = isOutbound ? 
         process.env.OUTBOUND_SYSTEM_PROMPT :
         process.env.INBOUND_SYSTEM_PROMPT;
+    
+    // Add tool information to the prompt if tools are enabled
+    const toolNames = (process.env.ULTRAVOX_CALL_TOOLS || '').split(',').filter(Boolean);
+    const useTools = process.env.ULTRAVOX_USE_TOOLS === 'true' || toolNames.length > 0;
+    
+    if (useTools) {
+        prompt = enhancePromptWithToolInfo(prompt, toolNames);
+    }
+    
     return processSystemPrompt(prompt);
 }
 
-// Add this function near the top with other utility functions
+/**
+ * Enhance the system prompt with information about available tools
+ * @param {string} basePrompt - The original system prompt
+ * @param {Array<string>} toolNames - Optional array of specific tool names to include
+ * @returns {string} - Enhanced system prompt
+ */
+function enhancePromptWithToolInfo(basePrompt, toolNames = []) {
+    // Get the tools that are available
+    const availableTools = Object.values(tools);
+    
+    // Filter to specific tools if names provided
+    const toolsToInclude = toolNames.length > 0
+        ? availableTools.filter(tool => toolNames.includes(tool.name))
+        : availableTools;
+
+    if (toolsToInclude.length === 0) return basePrompt;
+
+    // Build tool information for each tool
+    const toolsInfo = toolsToInclude.map(tool => {
+        // Start with the basic tool info
+        let info = `\n${tool.description}\n`;
+
+        // Add example queries if available
+        if (tool.examples && tool.examples.length > 0) {
+            tool.examples.forEach(example => {
+                info += `\nExample: "${example.query}"\nResponse: "${example.response}"\n`;
+            });
+        }
+
+        return info;
+    }).join('\n');
+
+    // Get guidelines from environment or use defaults
+    const guidelines = process.env.ULTRAVOX_TOOL_GUIDELINES || '';
+
+    // Combine everything
+    return guidelines ? `${basePrompt}\n${toolsInfo}\n${guidelines}` : `${basePrompt}\n${toolsInfo}`;
+}
+
+// Update verifyCorpusStatus function with more detailed logging
 async function verifyCorpusStatus() {
     return new Promise((resolve, reject) => {
+        console.log('Checking corpus status for ID:', ULTRAVOX_CORPUS_ID);
         const request = https.request(`${ULTRAVOX_API_URL.replace('/calls', '')}/corpora/${ULTRAVOX_CORPUS_ID}`, {
             method: 'GET',
             headers: {
@@ -59,27 +109,32 @@ async function verifyCorpusStatus() {
         let data = '';
         
         request.on('response', (response) => {
+            console.log('Corpus status check response code:', response.statusCode);
+            
             response.on('data', chunk => data += chunk);
             response.on('end', () => {
                 try {
                     const corpus = JSON.parse(data);
-                    console.log('Corpus status:', corpus.stats.status);
+                    console.log('Full corpus response:', corpus);
+                    console.log('Corpus status:', corpus.stats?.status);
+                    console.log('Corpus size:', corpus.stats?.num_chunks || 'unknown');
                     
-                    if (corpus.stats.status === 'CORPUS_STATUS_READY') {
+                    if (corpus.stats?.status === 'CORPUS_STATUS_READY') {
+                        console.log('✅ Corpus is ready for use');
                         resolve(true);
                     } else {
-                        console.warn(`Corpus not ready. Status: ${corpus.stats.status}`);
+                        console.warn(`⚠️ Corpus not ready. Status: ${corpus.stats?.status}`);
                         resolve(false);
                     }
                 } catch (error) {
-                    console.error('Error parsing corpus status:', error);
+                    console.error('❌ Error parsing corpus status:', error, 'Raw data:', data);
                     reject(error);
                 }
             });
         });
 
         request.on('error', (error) => {
-            console.error('Error checking corpus status:', error);
+            console.error('❌ Error checking corpus status:', error);
             reject(error);
         });
 
@@ -91,14 +146,17 @@ async function verifyCorpusStatus() {
 async function createUltravoxCall(options = {}) {
     const {
         systemPrompt,
-        isOutbound = false
+        isOutbound = false,
+        voiceId,
+        corpusId: overrideCorpusId,
+        toolNames
     } = options;
 
     // Create base call config
     const callConfig = {
         systemPrompt: systemPrompt || getSystemPrompt(isOutbound),
-        model: 'fixie-ai/ultravox',
-        voice: AI_VOICE,
+        model: 'fixie-ai/ultravox-70B',  // Ensure we use 70B model which handles tools better
+        voice: voiceId || AI_VOICE,
         temperature: AI_TEMPERATURE,
         firstSpeaker: isOutbound ? OUTBOUND_FIRST_SPEAKER : INBOUND_FIRST_SPEAKER,
         medium: { "twilio": {} },
@@ -106,18 +164,43 @@ async function createUltravoxCall(options = {}) {
         selectedTools: []
     };
 
-    // Add queryCorpus tool with verification
-    if (ULTRAVOX_CORPUS_ID) {
+    // Add tools only if explicitly provided or if ULTRAVOX_USE_TOOLS is true and toolNames is undefined
+    // If toolNames is an empty array, tools should be disabled
+    const useTools = toolNames === undefined ? 
+        process.env.ULTRAVOX_USE_TOOLS !== 'false' : 
+        toolNames.length > 0;
+    
+    if (useTools) {
+        // Get tools from the tool manager, using provided tool names if specified
+        const tools = getToolsForCall(toolNames || process.env.ULTRAVOX_CALL_TOOLS?.split(',').filter(Boolean));
+        
+        if (tools.length > 0) {
+            callConfig.selectedTools = callConfig.selectedTools.concat(tools);
+            console.log(`Adding ${tools.length} tools to ${isOutbound ? 'outbound' : 'inbound'} call:`, 
+                tools.map(t => t.toolName || t.temporaryTool?.modelToolName).join(', '));
+            
+            // Enhance the system prompt with tool information if guidelines exist
+            if (process.env.ULTRAVOX_TOOL_GUIDELINES) {
+                callConfig.systemPrompt = enhancePromptWithToolInfo(callConfig.systemPrompt, toolNames);
+            }
+        }
+    } else {
+        console.log('Tools disabled for this call');
+    }
+
+    // Add queryCorpus tool with verification if needed
+    const effectiveCorpusId = overrideCorpusId || ULTRAVOX_CORPUS_ID;
+    if (effectiveCorpusId) {
         try {
-            const isCorpusReady = await verifyCorpusStatus();
+            const isCorpusReady = await verifyCorpusStatus(effectiveCorpusId);
             
             if (isCorpusReady) {
-                console.log(`Adding corpus configuration for ${isOutbound ? 'outbound' : 'inbound'} call. Corpus ID: ${ULTRAVOX_CORPUS_ID}`);
+                console.log(`Adding corpus configuration for ${isOutbound ? 'outbound' : 'inbound'} call. Corpus ID: ${effectiveCorpusId}`);
                 
                 callConfig.selectedTools.push({
                     toolName: "queryCorpus",
                     parameterOverrides: {
-                        corpus_id: ULTRAVOX_CORPUS_ID,
+                        corpus_id: effectiveCorpusId,
                         max_results: 5
                     }
                 });
@@ -128,8 +211,18 @@ async function createUltravoxCall(options = {}) {
             console.error('Error verifying corpus status:', error);
             // Continue without RAG if corpus verification fails
         }
-    } else {
-        console.warn(`No ULTRAVOX_CORPUS_ID configured for ${isOutbound ? 'outbound' : 'inbound'} call - RAG disabled`);
+    }
+
+    // Add default tool instructions to system prompt if tools are enabled
+    if (callConfig.selectedTools.length > 0) {
+        callConfig.systemPrompt = `${callConfig.systemPrompt}
+
+Important: You have access to several tools that enhance your capabilities. Always use these tools when relevant to provide accurate and up-to-date information. When using tools:
+1. Use them proactively when relevant to the conversation
+2. Format the information naturally in your responses
+3. Don't mention that you're using a tool - just provide the information
+4. If a tool call fails, gracefully inform the user you're unable to get that information right now
+`;
     }
 
     console.log('Final call configuration:', JSON.stringify(callConfig, null, 2));
@@ -207,19 +300,30 @@ app.get('/', (req, res) => {
     res.send('Ultravox-Twilio Integration Server. Use /incoming for incoming calls and /outgoing for outgoing calls.');
 });
 
-// Handle incoming calls from Twilio
+// Update the incoming call handler with more detailed RAG logging
 app.post('/incoming', async (req, res) => {
     try {
-        console.log('Incoming call received:', req.body);
-
+        console.log('📞 Incoming call received:', req.body);
         const caller = req.body.From;
         const callSid = req.body.CallSid;
 
-        console.log(`Setting up incoming call ${callSid} with RAG configuration...`);
+        console.log('🔍 Verifying RAG configuration for incoming call...');
+        
+        // Verify corpus status before proceeding
+        let corpusReady = false;
+        if (ULTRAVOX_CORPUS_ID) {
+            try {
+                corpusReady = await verifyCorpusStatus();
+                console.log('Corpus ready status:', corpusReady);
+            } catch (error) {
+                console.error('Error checking corpus:', error);
+            }
+        }
+
+        console.log(`Setting up incoming call ${callSid} with${corpusReady ? '' : 'out'} RAG support...`);
 
         const response = await createUltravoxCall({
             isOutbound: false,
-            // You might want to add specific configuration for incoming calls
             systemPrompt: process.env.INBOUND_SYSTEM_PROMPT
         });
 
@@ -242,7 +346,7 @@ app.post('/incoming', async (req, res) => {
         res.send(twiml.toString());
 
     } catch (error) {
-        console.error('Error handling incoming call:', error);
+        console.error('❌ Error handling incoming call:', error);
         const twiml = new twilio.twiml.VoiceResponse();
         twiml.say('Sorry, there was an error processing your call.');
         res.type('text/xml');
@@ -259,7 +363,13 @@ app.post('/stream-status', (req, res) => {
 // API to initiate outgoing calls
 app.post('/outgoing', async (req, res) => {
     try {
-        const { destinationNumber, systemPrompt } = req.body;
+        const { 
+            destinationNumber, 
+            systemPrompt,
+            voiceId,
+            corpusId,
+            tools: requestedTools
+        } = req.body;
         
         if (!destinationNumber) {
             return res.status(400).json({ error: 'Destination phone number is required' });
@@ -273,10 +383,13 @@ app.post('/outgoing', async (req, res) => {
 
         console.log(`Creating Ultravox call for ${destinationNumber}...`);
         
-        // Create an Ultravox call first
+        // Create an Ultravox call with custom configuration
         const ultravoxResponse = await createUltravoxCall({
             systemPrompt: systemPrompt,
-            isOutbound: true
+            isOutbound: true,
+            voiceId: voiceId,
+            corpusId: corpusId,
+            toolNames: requestedTools
         });
         
         if (!ultravoxResponse || !ultravoxResponse.joinUrl) {
@@ -302,7 +415,12 @@ app.post('/outgoing', async (req, res) => {
         res.json({ 
             success: true, 
             message: 'Call initiated successfully', 
-            callSid: call.sid
+            callSid: call.sid,
+            configuration: {
+                voiceId: voiceId || AI_VOICE,
+                corpusId: corpusId || ULTRAVOX_CORPUS_ID,
+                tools: requestedTools || process.env.ULTRAVOX_CALL_TOOLS?.split(',') || []
+            }
         });
         
     } catch (error) {

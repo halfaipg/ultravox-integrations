@@ -145,6 +145,26 @@
             font-size: 1.1em;
             margin-bottom: 30px;
         }
+
+        .help-text {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-top: -15px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 20px;
+            border: 1px solid var(--bg-secondary);
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -159,6 +179,21 @@
             <div>
                 <label for="phoneNumber">Phone Number</label>
                 <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+1234567890" required>
+            </div>
+            <div>
+                <label for="voiceId">Voice ID (optional)</label>
+                <input type="text" id="voiceId" name="voiceId" placeholder="e.g. 87edb04c-06d4-47c2-bd94-683bc47e8fbe">
+                <small class="help-text">Leave empty to use default voice</small>
+            </div>
+            <div>
+                <label for="corpusId">Corpus ID (optional)</label>
+                <input type="text" id="corpusId" name="corpusId" placeholder="Leave empty for no corpus">
+                <small class="help-text">Enter corpus ID or leave empty to disable RAG</small>
+            </div>
+            <div>
+                <label for="tools">Tools</label>
+                <input type="text" id="tools" name="tools" placeholder="Leave empty to disable tools, or enter comma-separated names (e.g. blockexplorer,weather)">
+                <small class="help-text">Empty = tools disabled, comma-separated list = specific tools enabled, 'default' = use environment defaults</small>
             </div>
             <div>
                 <label for="systemPrompt">System Prompt</label>
@@ -186,6 +221,9 @@
             
             const phoneNumber = document.getElementById('phoneNumber').value;
             const systemPrompt = document.getElementById('systemPrompt').value;
+            const voiceId = document.getElementById('voiceId').value;
+            const corpusId = document.getElementById('corpusId').value;
+            const tools = document.getElementById('tools').value.trim();
             
             try {
                 const response = await fetch('/outgoing', {
@@ -195,7 +233,12 @@
                     },
                     body: JSON.stringify({
                         destinationNumber: phoneNumber,
-                        systemPrompt: systemPrompt || undefined
+                        systemPrompt: systemPrompt || undefined,
+                        voiceId: voiceId || undefined,
+                        corpusId: corpusId || undefined,
+                        tools: tools === '' ? [] : 
+                               tools.toLowerCase() === 'default' ? undefined :
+                               tools.split(',').map(t => t.trim())
                     })
                 });
                 
