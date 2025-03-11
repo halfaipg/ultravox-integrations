@@ -5,6 +5,7 @@ import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getToolsForCall } from './utils/tool-manager.js';
+import { tools } from './config/tools.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -95,10 +96,9 @@ function enhancePromptWithToolInfo(basePrompt, toolNames = []) {
     return guidelines ? `${basePrompt}\n${toolsInfo}\n${guidelines}` : `${basePrompt}\n${toolsInfo}`;
 }
 
-// Update verifyCorpusStatus function with more detailed logging
+// Update verifyCorpusStatus function with more concise logging
 async function verifyCorpusStatus() {
     return new Promise((resolve, reject) => {
-        console.log('Checking corpus status for ID:', ULTRAVOX_CORPUS_ID);
         const request = https.request(`${ULTRAVOX_API_URL.replace('/calls', '')}/corpora/${ULTRAVOX_CORPUS_ID}`, {
             method: 'GET',
             headers: {
@@ -109,32 +109,24 @@ async function verifyCorpusStatus() {
         let data = '';
         
         request.on('response', (response) => {
-            console.log('Corpus status check response code:', response.statusCode);
-            
             response.on('data', chunk => data += chunk);
             response.on('end', () => {
                 try {
                     const corpus = JSON.parse(data);
-                    console.log('Full corpus response:', corpus);
-                    console.log('Corpus status:', corpus.stats?.status);
-                    console.log('Corpus size:', corpus.stats?.num_chunks || 'unknown');
-                    
                     if (corpus.stats?.status === 'CORPUS_STATUS_READY') {
-                        console.log('✅ Corpus is ready for use');
                         resolve(true);
                     } else {
-                        console.warn(`⚠️ Corpus not ready. Status: ${corpus.stats?.status}`);
                         resolve(false);
                     }
                 } catch (error) {
-                    console.error('❌ Error parsing corpus status:', error, 'Raw data:', data);
+                    console.error('❌ Error checking corpus status:', error.message);
                     reject(error);
                 }
             });
         });
 
         request.on('error', (error) => {
-            console.error('❌ Error checking corpus status:', error);
+            console.error('❌ Error checking corpus status:', error.message);
             reject(error);
         });
 
@@ -501,11 +493,8 @@ app.post('/callback', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`- Incoming calls endpoint: http://localhost:${PORT}/incoming`);
-    console.log(`- Outgoing calls endpoint: http://localhost:${PORT}/outgoing`);
-    
+app.listen(PORT, async () => {
+    // Log any missing configurations first
     if (!ULTRAVOX_API_KEY) {
         console.warn('WARNING: ULTRAVOX_API_KEY is not set');
     }
@@ -522,7 +511,40 @@ app.listen(PORT, () => {
         console.warn('WARNING: TWILIO_PHONE_NUMBER is not set');
     }
 
-    if (!ULTRAVOX_CORPUS_ID) {
-        console.warn('WARNING: ULTRAVOX_CORPUS_ID is not set - RAG functionality will be disabled');
+    // Add a blank line before status section
+    console.log('\n--- Status ---');
+    
+    // Log tool configuration
+    const useTools = process.env.ULTRAVOX_USE_TOOLS === 'true';
+    if (useTools) {
+        const availableTools = Object.keys(tools);
+        console.log(`🔧 Configured ${availableTools.length} Ultravox tools`);
+        if (availableTools.length > 0) {
+            console.log('📋 Available tools:', availableTools.join(', '));
+        }
+    } else {
+        console.log('🔧 Tools disabled in environment');
     }
+    
+    // Check corpus status
+    if (ULTRAVOX_CORPUS_ID) {
+        try {
+            const isCorpusReady = await verifyCorpusStatus();
+            if (isCorpusReady) {
+                console.log('📚 Corpus ready:', ULTRAVOX_CORPUS_ID);
+            } else {
+                console.warn('⚠️ Corpus not ready:', ULTRAVOX_CORPUS_ID);
+            }
+        } catch (error) {
+            console.error('❌ Error checking corpus:', ULTRAVOX_CORPUS_ID);
+        }
+    } else {
+        console.log('📚 No corpus configured');
+    }
+
+    // Add a blank line before server info
+    console.log('\n--- Server Info ---');
+    console.log(`Server running on port ${PORT}`);
+    console.log(`- Incoming calls endpoint: http://localhost:${PORT}/incoming`);
+    console.log(`- Outgoing calls endpoint: http://localhost:${PORT}/outgoing`);
 });
