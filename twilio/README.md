@@ -75,10 +75,9 @@ curl -X POST http://localhost:3000/outgoing \
   -H "Content-Type: application/json" \
   -d '{
     "destinationNumber": "+1234567890",
-    "systemPrompt": "You are calling to confirm an appointment."
-  }'
+    "systemPrompt": "You are calling Westside Dentistry to confirm an appointment for Steven Smith at 8:30am on Wednesday July 2nd. Use corpus lookup if they need any personal information about Steven."
+  }
 ```
-
 ## Webhook Configuration
 
 For production use, you'll need to:
