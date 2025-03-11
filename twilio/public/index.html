@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultravox-Twilio Integration</title>
+    <title>AI Voice Agent</title>
     <style>
         :root {
             --bg-primary: #1a1a1a;
@@ -165,12 +165,37 @@
             color: var(--text-primary);
             font-family: monospace;
         }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 20px;
+            border: 1px solid var(--bg-secondary);
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        select option {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 12px;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Ultravox-Twilio Integration</h1>
-        <p class="description">Advanced voice AI integration testing interface</p>
+        <h1>AI Voice Agent</h1>
+        <p class="description">Test Inferface</p>
     </div>
 
     <div class="container">
@@ -181,9 +206,11 @@
                 <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+1234567890" required>
             </div>
             <div>
-                <label for="voiceId">Voice ID (optional)</label>
-                <input type="text" id="voiceId" name="voiceId" placeholder="e.g. 87edb04c-06d4-47c2-bd94-683bc47e8fbe">
-                <small class="help-text">Leave empty to use default voice</small>
+                <label for="voiceId">Voice</label>
+                <select id="voiceId" name="voiceId">
+                    <option value="">Loading voices...</option>
+                </select>
+                <small class="help-text">Select a voice for the AI assistant</small>
             </div>
             <div>
                 <label for="corpusId">Corpus ID (optional)</label>
@@ -192,12 +219,14 @@
             </div>
             <div>
                 <label for="tools">Tools</label>
-                <input type="text" id="tools" name="tools" placeholder="Leave empty to disable tools, or enter comma-separated names (e.g. blockexplorer,weather)">
+                <input type="text" id="tools" name="tools" placeholder="Leave empty to disable tools, or enter comma-separated names (e.g. weather, time)">
                 <small class="help-text">Empty = tools disabled, comma-separated list = specific tools enabled, 'default' = use environment defaults</small>
             </div>
             <div>
                 <label for="systemPrompt">System Prompt</label>
-                <textarea id="systemPrompt" name="systemPrompt" rows="4" placeholder="Enter system prompt for the AI assistant..."></textarea>
+                <textarea id="systemPrompt" name="systemPrompt" rows="4" placeholder="Enter system prompt for the AI assistant.
+
+Example: 'You are a helpful assistant that is calling to check on the status of a shipment for order#4432'"></textarea>
             </div>
             <button type="submit">Initiate Call</button>
         </form>
@@ -216,6 +245,44 @@
     </div>
 
     <script>
+        async function loadVoices() {
+            try {
+                const response = await fetch('/voices');
+                const data = await response.json();
+                
+                const voiceSelect = document.getElementById('voiceId');
+                voiceSelect.innerHTML = '<option value="">Default Voice</option>';
+                
+                // Sort voices by name
+                const voices = data.results.sort((a, b) => a.name.localeCompare(b.name));
+                
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.voiceId;
+                    // Add gender and language info to the name if available
+                    let displayName = voice.name;
+                    if (voice.gender && voice.language) {
+                        displayName += ` (${voice.gender}, ${voice.language})`;
+                    }
+                    option.textContent = displayName;
+                    if (voice.description) {
+                        option.title = voice.description;
+                    }
+                    // Set the current voice as selected if it matches
+                    if (voice.voiceId === '87edb04c-06d4-47c2-bd94-683bc47e8fbe') {
+                        option.selected = true;
+                    }
+                    voiceSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading voices:', error);
+                const voiceSelect = document.getElementById('voiceId');
+                voiceSelect.innerHTML = '<option value="">Error loading voices</option>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadVoices);
+
         document.getElementById('outboundForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             

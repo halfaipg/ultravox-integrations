@@ -492,6 +492,42 @@ app.post('/callback', (req, res) => {
     res.status(200).send('Event received');
 });
 
+// Add this before the other route definitions
+app.get('/voices', async (req, res) => {
+    try {
+        const response = await new Promise((resolve, reject) => {
+            const request = https.request(`${ULTRAVOX_API_URL.replace('/calls', '')}/voices`, {
+                method: 'GET',
+                headers: {
+                    'X-API-Key': ULTRAVOX_API_KEY
+                }
+            });
+
+            let data = '';
+            
+            request.on('response', (response) => {
+                response.on('data', chunk => data += chunk);
+                response.on('end', () => {
+                    try {
+                        const voices = JSON.parse(data);
+                        resolve(voices);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            });
+
+            request.on('error', reject);
+            request.end();
+        });
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching voices:', error);
+        res.status(500).json({ error: 'Failed to fetch voices' });
+    }
+});
+
 // Start server
 app.listen(PORT, async () => {
     // Log any missing configurations first
