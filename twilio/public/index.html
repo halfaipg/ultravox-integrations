@@ -6,122 +6,218 @@
     <title>AI Voice Agent</title>
     <style>
         :root {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --bg-tertiary: #2d2d2d;
             --text-primary: #ffffff;
             --text-secondary: #b3b3b3;
+            --text-labels: #e0e0e0;
+            --accent-color: #4CAF50;
+            --error-color: #f44336;
             --accent: #4CAF50;
             --accent-hover: #45a049;
-            --error: #ff4444;
             --success: #00C851;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            max-width: 900px;
+            max-width: 700px;
             margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
+            padding: 0 10px 10px 10px;
+            line-height: 1.5;
             background-color: var(--bg-primary);
             color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
 
         .container {
             background-color: var(--bg-secondary);
             border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            padding: 25px 30px;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
             transition: transform 0.2s ease;
+            width: 100%;
         }
 
         .container:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
         }
 
         h1, h2 {
             color: var(--text-primary);
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            text-align: center;
         }
 
         h1 {
-            font-size: 2.5em;
+            font-size: 2.2em;
             font-weight: 700;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
+            margin-top: 0;
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+
+        h2 {
+            font-size: 1.6em;
+            letter-spacing: -0.3px;
+            font-weight: 600;
+            margin-bottom: 20px;
         }
 
         input, textarea {
             width: 100%;
-            padding: 12px;
-            margin: 8px 0 20px;
+            padding: 14px;
+            margin: 8px 0 22px;
             border: 1px solid var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 10px;
             box-sizing: border-box;
-            background-color: var(--bg-primary);
+            background-color: rgba(20, 20, 20, 0.8);
             color: var(--text-primary);
             transition: all 0.3s ease;
+            font-size: 15px;
         }
 
         input:focus, textarea:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+            background-color: rgba(25, 25, 25, 1);
         }
 
         button {
+            padding: 12px 24px;
             background-color: var(--accent);
             color: white;
             border: none;
-            padding: 12px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
+            border-radius: 4px;
             font-size: 16px;
-            margin: 4px 2px;
             cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            font-weight: 500;
+            transition: background-color 0.3s, transform 0.2s;
         }
-
+        
         button:hover {
-            background-color: var(--accent-hover);
-            transform: translateY(-1px);
+            background-color: var(--accent-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .result {
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 25px;
+            padding: 20px;
             border-left: 4px solid var(--accent);
-            background-color: rgba(76, 175, 80, 0.1);
-            border-radius: 0 8px 8px 0;
+            background-color: rgba(76, 175, 80, 0.08);
+            border-radius: 0 10px 10px 0;
+            transition: all 0.5s ease;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .result.success {
+            border-left: 4px solid var(--accent);
+            background-color: rgba(76, 175, 80, 0.08);
+        }
+        
+        .result.error {
+            border-left: 4px solid var(--error-color);
+            background-color: rgba(244, 67, 54, 0.08);
+        }
+
+        .result.refreshing {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        /* Animation for result content */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Pulse animation for result box */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+
+        /* Error pulse animation */
+        @keyframes pulseError {
+            0% {
+                box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+            }
+        }
+
+        /* Apply animation to result content */
+        .result pre {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .result.success:not(.refreshing) {
+            animation: pulse 1.5s ease-out;
+        }
+        
+        .result.error:not(.refreshing) {
+            animation: pulseError 1.5s ease-out;
         }
 
         .hidden {
-            display: none;
+            display: none !important;
         }
 
         pre {
-            background-color: var(--bg-primary);
-            padding: 15px;
-            border-radius: 8px;
+            background-color: rgba(10, 10, 10, 0.6);
+            padding: 16px;
+            border-radius: 10px;
             overflow-x: auto;
             color: var(--text-secondary);
             font-family: 'Monaco', 'Consolas', monospace;
+            margin: 15px 0;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
-            color: var(--text-secondary);
-            font-weight: 500;
+            text-align: center;
+            color: var(--text-labels);
+            font-weight: 600;
+            font-size: 1.05em;
+            letter-spacing: 0.5px;
         }
 
         #serverStatus {
             display: inline-block;
-            padding: 8px 12px;
+            padding: 8px 16px;
             border-radius: 6px;
             font-weight: 500;
+            margin: 10px 0;
         }
 
         #serverStatus.online {
@@ -130,20 +226,37 @@
         }
 
         #serverStatus.offline {
-            background-color: var(--error);
+            background-color: var(--error-color);
             color: white;
         }
 
         .header {
-            border-bottom: 1px solid var(--bg-secondary);
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            text-align: center;
+            margin-bottom: 8px;
+            margin-top: 0;
+            padding-top: 5px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-container {
+            margin-bottom: 2px;
+        }
+
+        .logo {
+            max-width: 80px;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
         }
 
         .description {
             color: var(--text-secondary);
             font-size: 1.1em;
             margin-bottom: 30px;
+            text-align: center;
         }
 
         .help-text {
@@ -151,38 +264,84 @@
             color: var(--text-secondary);
             font-size: 0.9em;
             margin-top: -15px;
-            margin-bottom: 15px;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            margin: 20px 0 15px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.4em;
+            position: relative;
+        }
+        
+        h3::after {
+            content: '';
+            display: block;
+            width: 120px;
+            height: 3px;
+            background: linear-gradient(to right, transparent, var(--accent-color), transparent);
+            margin: 12px auto 0;
+            border-radius: 3px;
+        }
+        
+        h4 {
+            color: var(--text-primary);
+            margin: 25px 0 18px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.3em;
+        }
+
+        small {
+            display: block;
+            color: var(--text-secondary);
+            margin-top: -18px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-style: italic;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            margin: 8px 0 20px;
+            padding: 14px;
+            margin: 8px 0 22px;
             border: 1px solid var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 10px;
             box-sizing: border-box;
-            background-color: var(--bg-primary);
+            background-color: rgba(20, 20, 20, 0.8);
             color: var(--text-primary);
             font-family: monospace;
+            font-size: 15px;
         }
 
         select {
             width: 100%;
-            padding: 12px;
-            margin: 8px 0 20px;
+            padding: 14px;
+            margin: 8px 0 22px;
             border: 1px solid var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 10px;
             box-sizing: border-box;
-            background-color: var(--bg-primary);
+            background-color: rgba(20, 20, 20, 0.8);
             color: var(--text-primary);
             transition: all 0.3s ease;
             cursor: pointer;
+            font-size: 15px;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 12px;
+            padding-right: 30px;
         }
 
         select:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+            background-color: rgba(25, 25, 25, 1);
         }
 
         select option {
@@ -190,12 +349,118 @@
             color: var(--text-primary);
             padding: 12px;
         }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .link-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .link-container input {
+            flex-grow: 1;
+            margin-bottom: 10px;
+            background-color: rgba(20, 20, 20, 0.5);
+            border-color: var(--accent);
+            border-width: 1px;
+            font-family: monospace;
+        }
+
+        .link-container button {
+            margin-top: 8px;
+            padding: 0 15px;
+            height: 40px;
+        }
+
+        #outboundForm {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        #outboundForm > div {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        #outboundForm button[type="submit"] {
+            min-width: 220px;
+            margin-top: 25px;
+            font-size: 1.1em;
+        }
+        
+        /* Add a subtle divider between form fields */
+        #outboundForm > div::after {
+            content: '';
+            display: block;
+            height: 1px;
+            width: 60%;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.05), transparent);
+            margin: 0 auto;
+            margin-bottom: 10px;
+        }
+        
+        /* Don't show divider after the last form field */
+        #outboundForm > div:last-of-type::after {
+            display: none;
+        }
+        
+        #shareableLinkContainer small {
+            margin-top: 15px;
+            opacity: 0.8;
+            font-style: italic;
+            display: block;
+            clear: both;
+        }
+
+        /* Loading spinner styles */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        button .spinner {
+            width: 14px;
+            height: 14px;
+            border-width: 2px;
+            margin-left: 8px;
+            vertical-align: middle;
+            position: relative;
+            top: -1px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="header">
+        <div class="logo-container">
+            <img src="https://brand.aipowergrid.io/_data/i/upload/2024/03/14/20240314185634-06dfd4e5-2s.png" alt="AI Power Grid Logo" class="logo">
+        </div>
         <h1>AI Voice Agent</h1>
-        <p class="description">Test Inferface</p>
     </div>
 
     <div class="container">
@@ -223,28 +488,118 @@
                 <small class="help-text">Empty = tools disabled, comma-separated list = specific tools enabled, 'default' = use environment defaults</small>
             </div>
             <div>
+                <label for="agentName">Agent Name</label>
+                <input type="text" id="agentName" name="agentName" placeholder="Leave empty to use default (Loddie)">
+                <small class="help-text">Custom name for the AI agent (prepended to prompt)</small>
+            </div>
+            <div>
                 <label for="systemPrompt">System Prompt</label>
                 <textarea id="systemPrompt" name="systemPrompt" rows="4" placeholder="Enter system prompt for the AI assistant.
 
 Example: 'You are a helpful assistant that is calling to check on the status of a shipment for order#4432'"></textarea>
             </div>
-            <button type="submit">Initiate Call</button>
+            <div class="form-group">
+                <button type="submit" id="submitBtn">Start Call<span id="loadingSpinner" class="spinner hidden"></span></button>
+            </div>
         </form>
         <div id="outboundResult" class="result hidden">
             <h3>Result:</h3>
             <pre id="outboundResultContent"></pre>
-        </div>
-    </div>
-
-    <div class="container">
-        <h2>Status</h2>
-        <p>Server Status: <span id="serverStatus">Checking...</span></p>
-        <div>
-            <button id="checkStatusBtn">Check Status</button>
+            <div id="shareableLinkContainer" class="mt-20 hidden">
+                <h4>Shareable Link:</h4>
+                <div class="link-container">
+                    <input type="text" id="shareableLink" readonly>
+                    <button id="copyLinkBtn">Copy</button>
+                </div>
+                <small>Share this link to pre-fill the form with these values</small>
+            </div>
         </div>
     </div>
 
     <script>
+        // Function to parse URL parameters and fill the form
+        function parseURLParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Map URL parameters to form field IDs
+            const paramMap = {
+                'phone': 'phoneNumber',
+                'voice': 'voiceId',
+                'corpus': 'corpusId',
+                'tools': 'tools',
+                'agent': 'agentName',
+                'prompt': 'systemPrompt'
+            };
+            
+            // Fill form fields based on URL parameters
+            for (const [param, fieldId] of Object.entries(paramMap)) {
+                if (urlParams.has(param)) {
+                    const field = document.getElementById(fieldId);
+                    if (field) {
+                        if (field.tagName === 'TEXTAREA') {
+                            field.value = decodeURIComponent(urlParams.get(param));
+                        } else if (field.tagName === 'SELECT') {
+                            // For select elements, we need to wait until options are loaded
+                            // Will be handled in loadVoices function
+                        } else {
+                            field.value = decodeURIComponent(urlParams.get(param));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Function to copy text to clipboard
+        function copyToClipboard(text) {
+            // Modern way using clipboard API if available
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        // Show feedback
+                        const copyBtn = document.getElementById('copyLinkBtn');
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                        // Fallback to the old method if clipboard API fails
+                        fallbackCopyToClipboard(text);
+                    });
+            } else {
+                // Fallback for browsers that don't support clipboard API
+                fallbackCopyToClipboard(text);
+            }
+        }
+
+        // Fallback method for older browsers
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';  // Make it invisible
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                // Show feedback
+                const copyBtn = document.getElementById('copyLinkBtn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
         async function loadVoices() {
             try {
                 const response = await fetch('/voices');
@@ -274,6 +629,17 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                     }
                     voiceSelect.appendChild(option);
                 });
+                
+                // Now that options are loaded, set the voice if it was in URL params
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('voice')) {
+                    const voiceId = urlParams.get('voice');
+                    // Find the option with this value
+                    const option = Array.from(voiceSelect.options).find(opt => opt.value === voiceId);
+                    if (option) {
+                        option.selected = true;
+                    }
+                }
             } catch (error) {
                 console.error('Error loading voices:', error);
                 const voiceSelect = document.getElementById('voiceId');
@@ -281,7 +647,10 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadVoices);
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVoices();
+            parseURLParams();
+        });
 
         document.getElementById('outboundForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -291,6 +660,27 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
             const voiceId = document.getElementById('voiceId').value;
             const corpusId = document.getElementById('corpusId').value;
             const tools = document.getElementById('tools').value.trim();
+            const agentName = document.getElementById('agentName').value.trim();
+            
+            // Get result elements
+            const resultElement = document.getElementById('outboundResult');
+            const resultContentElement = document.getElementById('outboundResultContent');
+            const shareableLinkContainer = document.getElementById('shareableLinkContainer');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            // Show loading spinner
+            loadingSpinner.classList.remove('hidden');
+            
+            // If result is already visible, add refreshing class for transition
+            if (!resultElement.classList.contains('hidden')) {
+                resultElement.classList.add('refreshing');
+                // Wait for animation to complete before updating content
+                await new Promise(resolve => setTimeout(resolve, 300));
+            } else {
+                // Remove hidden class but keep it invisible with refreshing state
+                resultElement.classList.remove('hidden');
+                resultElement.classList.add('refreshing');
+            }
             
             try {
                 const response = await fetch('/outgoing', {
@@ -303,6 +693,7 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                         systemPrompt: systemPrompt || undefined,
                         voiceId: voiceId || undefined,
                         corpusId: corpusId || undefined,
+                        agentName: agentName || undefined,
                         tools: tools === '' ? [] : 
                                tools.toLowerCase() === 'default' ? undefined :
                                tools.split(',').map(t => t.trim())
@@ -311,42 +702,73 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                 
                 const data = await response.json();
                 
-                const resultElement = document.getElementById('outboundResult');
-                const resultContentElement = document.getElementById('outboundResultContent');
+                // Hide loading spinner
+                loadingSpinner.classList.add('hidden');
                 
-                resultElement.classList.remove('hidden');
+                // Update content while result is still invisible
                 resultContentElement.textContent = JSON.stringify(data, null, 2);
+                
+                // Check if the call failed and apply error styling
+                if (data.error) {
+                    resultElement.classList.add('error');
+                    resultElement.classList.remove('success');
+                } else {
+                    resultElement.classList.add('success');
+                    resultElement.classList.remove('error');
+                }
+                
+                // Generate shareable link
+                const baseUrl = window.location.origin + window.location.pathname;
+                let shareableLink = baseUrl + '?';
+                
+                // Only add parameters that have values
+                if (phoneNumber) shareableLink += 'phone=' + encodeURIComponent(phoneNumber) + '&';
+                if (voiceId) shareableLink += 'voice=' + encodeURIComponent(voiceId) + '&';
+                if (corpusId) shareableLink += 'corpus=' + encodeURIComponent(corpusId) + '&';
+                if (tools) shareableLink += 'tools=' + encodeURIComponent(tools) + '&';
+                if (agentName) shareableLink += 'agent=' + encodeURIComponent(agentName) + '&';
+                if (systemPrompt) shareableLink += 'prompt=' + encodeURIComponent(systemPrompt);
+                
+                // Remove trailing '&' if needed
+                if (shareableLink.endsWith('&')) {
+                    shareableLink = shareableLink.slice(0, -1);
+                }
+                
+                const shareableLinkInput = document.getElementById('shareableLink');
+                
+                shareableLinkInput.value = shareableLink;
+                shareableLinkContainer.classList.remove('hidden');
+                
+                // Make sure only one event listener is attached
+                const copyLinkBtn = document.getElementById('copyLinkBtn');
+                copyLinkBtn.onclick = function() {
+                    copyToClipboard(shareableLink);
+                };
+                
+                // Show the result with animation
+                setTimeout(() => {
+                    resultElement.classList.remove('refreshing');
+                }, 50);
                 
             } catch (error) {
                 console.error('Error:', error);
+                
+                // Hide loading spinner
+                loadingSpinner.classList.add('hidden');
+                
+                // Update content to show error
+                resultContentElement.textContent = 'Error: ' + error.message;
+                resultElement.classList.add('error');
+                resultElement.classList.remove('success');
+                
+                // Show the result with animation
+                setTimeout(() => {
+                    resultElement.classList.remove('refreshing');
+                }, 50);
+                
                 alert('Error: ' + error.message);
             }
         });
-        
-        async function checkServerStatus() {
-            try {
-                const response = await fetch('/health');
-                const data = await response.json();
-                const statusElement = document.getElementById('serverStatus');
-                
-                if (response.ok) {
-                    statusElement.textContent = `Online (${data.status})`;
-                    statusElement.className = 'online';
-                } else {
-                    statusElement.textContent = 'Error: ' + response.status;
-                    statusElement.className = 'offline';
-                }
-            } catch (error) {
-                const statusElement = document.getElementById('serverStatus');
-                statusElement.textContent = 'Offline';
-                statusElement.className = 'offline';
-            }
-        }
-        
-        document.getElementById('checkStatusBtn').addEventListener('click', checkServerStatus);
-        
-        // Check status on page load
-        checkServerStatus();
     </script>
 </body>
 </html> 

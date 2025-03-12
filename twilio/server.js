@@ -34,14 +34,26 @@ const AI_VOICE = process.env.AI_ASSISTANT_VOICE_ID || '3abe60f5-13ed-4e82-ac15-4
 const AI_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE) || 0.3;
 const OUTBOUND_FIRST_SPEAKER = process.env.OUTBOUND_FIRST_SPEAKER || 'FIRST_SPEAKER_USER';
 const INBOUND_FIRST_SPEAKER = process.env.INBOUND_FIRST_SPEAKER || 'FIRST_SPEAKER_AGENT';
+// Use a static preprompt instead of reading from env
+const AGENT_PREPROMPT = "Your name is {AGENT_NAME} and you are speaking with a human audible voice, so don't vocalize anything that wouldnt be spoken, you can say 'um' or 'hm' in place of pauses etc. Please stricly adhere to the following prompt:";
 
 // Process system prompt by replacing variables
-function processSystemPrompt(prompt) {
-    return prompt.replace(/{AI_NAME}/g, AI_NAME);
+function processSystemPrompt(prompt, agentName) {
+    // Use the provided agent name or fall back to the default AI_NAME
+    const nameToUse = agentName || AI_NAME;
+    
+    // Add preprompt if needed
+    let processedPrompt = prompt;
+    // Always add the preprompt with the agent name
+    const preprompt = AGENT_PREPROMPT.replace(/{AGENT_NAME}/g, nameToUse);
+    processedPrompt = `${preprompt}\n\n${processedPrompt}`;
+    
+    // Replace any remaining {AI_NAME} placeholders in the prompt
+    return processedPrompt.replace(/{AI_NAME}/g, nameToUse);
 }
 
 // Get appropriate system prompt based on call type
-function getSystemPrompt(isOutbound = false) {
+function getSystemPrompt(isOutbound = false, agentName = null) {
     let prompt = isOutbound ? 
         process.env.OUTBOUND_SYSTEM_PROMPT :
         process.env.INBOUND_SYSTEM_PROMPT;
@@ -54,7 +66,7 @@ function getSystemPrompt(isOutbound = false) {
         prompt = enhancePromptWithToolInfo(prompt, toolNames);
     }
     
-    return processSystemPrompt(prompt);
+    return processSystemPrompt(prompt, agentName);
 }
 
 /**
@@ -141,12 +153,15 @@ async function createUltravoxCall(options = {}) {
         isOutbound = false,
         voiceId,
         corpusId: overrideCorpusId,
-        toolNames
+        toolNames,
+        agentName
     } = options;
 
     // Create base call config
     const callConfig = {
-        systemPrompt: systemPrompt || getSystemPrompt(isOutbound),
+        systemPrompt: systemPrompt ? 
+            processSystemPrompt(systemPrompt, agentName) : 
+            getSystemPrompt(isOutbound, agentName),
         model: 'fixie-ai/ultravox-70B',  // Ensure we use 70B model which handles tools better
         voice: voiceId || AI_VOICE,
         temperature: AI_TEMPERATURE,
@@ -176,6 +191,10 @@ async function createUltravoxCall(options = {}) {
                 callConfig.systemPrompt = enhancePromptWithToolInfo(callConfig.systemPrompt, toolNames);
             }
         }
+
+        // Always add the built-in hangUp tool
+        callConfig.selectedTools.push({ toolName: "hangUp" });
+        console.log(`Added built-in hangUp tool to ${isOutbound ? 'outbound' : 'inbound'} call`);
     } else {
         console.log('Tools disabled for this call');
     }
@@ -214,6 +233,8 @@ Important: You have access to several tools that enhance your capabilities. Alwa
 2. Format the information naturally in your responses
 3. Don't mention that you're using a tool - just provide the information
 4. If a tool call fails, gracefully inform the user you're unable to get that information right now
+5. For the hangUp tool, only use it when the user requests to end the call or the conversation has reached a natural conclusion
+6. Before using hangUp, provide a brief summary or closing statement to the user
 `;
     }
 
@@ -316,7 +337,8 @@ app.post('/incoming', async (req, res) => {
 
         const response = await createUltravoxCall({
             isOutbound: false,
-            systemPrompt: process.env.INBOUND_SYSTEM_PROMPT
+            systemPrompt: process.env.INBOUND_SYSTEM_PROMPT,
+            agentName: AI_NAME
         });
 
         if (!response || !response.joinUrl) {
@@ -360,7 +382,8 @@ app.post('/outgoing', async (req, res) => {
             systemPrompt,
             voiceId,
             corpusId,
-            tools: requestedTools
+            tools: requestedTools,
+            agentName
         } = req.body;
         
         if (!destinationNumber) {
@@ -381,7 +404,8 @@ app.post('/outgoing', async (req, res) => {
             isOutbound: true,
             voiceId: voiceId,
             corpusId: corpusId,
-            toolNames: requestedTools
+            toolNames: requestedTools,
+            agentName: agentName
         });
         
         if (!ultravoxResponse || !ultravoxResponse.joinUrl) {
@@ -409,6 +433,7 @@ app.post('/outgoing', async (req, res) => {
             message: 'Call initiated successfully', 
             callSid: call.sid,
             configuration: {
+                agentName: agentName || AI_NAME,
                 voiceId: voiceId || AI_VOICE,
                 corpusId: corpusId || ULTRAVOX_CORPUS_ID,
                 tools: requestedTools || process.env.ULTRAVOX_CALL_TOOLS?.split(',') || []
@@ -429,6 +454,7 @@ app.post('/direct-connect/:callId', async (req, res) => {
     try {
         const callId = req.params.callId;
         const systemPrompt = app.locals.callPrompts[callId];
+        const agentName = app.locals.callAgentNames ? app.locals.callAgentNames[callId] : null;
         
         if (!systemPrompt) {
             throw new Error(`No system prompt found for call ID ${callId}`);
@@ -439,6 +465,7 @@ app.post('/direct-connect/:callId', async (req, res) => {
         // Create an Ultravox call
         const ultravoxResponse = await createUltravoxCall({
             systemPrompt: systemPrompt,
+            agentName: agentName,
             firstSpeaker: 'FIRST_SPEAKER_AGENT',
             callbackUrl: `${req.protocol}://${req.get('host')}/callback`
         });
@@ -461,6 +488,9 @@ app.post('/direct-connect/:callId', async (req, res) => {
         
         // Remove the stored prompt to free up memory
         delete app.locals.callPrompts[callId];
+        if (app.locals.callAgentNames) {
+            delete app.locals.callAgentNames[callId];
+        }
         
         console.log(`Sending connect TwiML for direct connect call ${callId}`);
         res.type('text/xml');
