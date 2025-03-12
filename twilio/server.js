@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getToolsForCall } from './utils/tool-manager.js';
 import { tools } from './config/tools.js';
+import axios from 'axios';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -555,6 +556,155 @@ app.get('/voices', async (req, res) => {
     } catch (error) {
         console.error('Error fetching voices:', error);
         res.status(500).json({ error: 'Failed to fetch voices' });
+    }
+});
+
+// Corpus Management Endpoints
+app.get('/list-corpora', async (req, res) => {
+    try {
+        const response = await axios({
+            method: 'GET',
+            url: `${ULTRAVOX_API_URL.replace('/calls', '')}/corpora`,
+            headers: {
+                'X-API-Key': ULTRAVOX_API_KEY
+            }
+        });
+        
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error listing corpora:', error);
+        res.status(500).json({ 
+            error: 'Failed to list corpora', 
+            message: error.message 
+        });
+    }
+});
+
+app.post('/create-corpus', async (req, res) => {
+    try {
+        const { name, description, urls } = req.body;
+        
+        if (!name) {
+            return res.status(400).json({ error: 'Corpus name is required' });
+        }
+        
+        // 1. Create the corpus via Ultravox API
+        const corpusResponse = await axios({
+            method: 'POST',
+            url: `${ULTRAVOX_API_URL.replace('/calls', '')}/corpora`,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': ULTRAVOX_API_KEY
+            },
+            data: {
+                name,
+                description: description || `Corpus created via Voice Agent UI`
+            }
+        });
+        
+        const corpusId = corpusResponse.data.corpusId;
+        
+        // 2. Process URLs and create sources for each
+        const sourcePromises = [];
+        if (urls && urls.trim()) {
+            const urlList = urls.split(',').map(url => url.trim()).filter(url => url);
+            
+            for (const url of urlList) {
+                // Create a source for each URL
+                sourcePromises.push(
+                    axios({
+                        method: 'POST',
+                        url: `${ULTRAVOX_API_URL.replace('/calls', '')}/corpora/${corpusId}/sources`,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': ULTRAVOX_API_KEY
+                        },
+                        data: {
+                            name: `Source: ${url}`,
+                            loadSpec: {
+                                startUrls: [url],
+                                maxDepth: 1 // Only fetch the provided URL, not linked pages
+                            }
+                        }
+                    }).catch(error => {
+                        console.error(`Error adding source ${url}:`, error.message);
+                        return { 
+                            status: 'rejected',
+                            url,
+                            error: error.message
+                        };
+                    })
+                );
+            }
+        }
+        
+        // Wait for all source creation requests to complete
+        const sourceResults = await Promise.all(sourcePromises);
+        
+        // Count successes and failures
+        const succeeded = sourceResults.filter(r => !r.status || r.status !== 'rejected').length;
+        const failed = sourceResults.filter(r => r.status === 'rejected').length;
+        
+        res.json({
+            success: true,
+            corpusId,
+            message: `Corpus created successfully with ${succeeded} sources. ${failed} sources failed.`,
+            sourceStatus: sourceResults.map((result, index) => {
+                if (result.status === 'rejected') {
+                    return {
+                        url: urls.split(',')[index].trim(),
+                        status: 'failed',
+                        error: result.error
+                    };
+                } else {
+                    return {
+                        url: urls.split(',')[index].trim(),
+                        status: 'success'
+                    };
+                }
+            })
+        });
+        
+    } catch (error) {
+        console.error('Error creating corpus:', error);
+        res.status(500).json({ 
+            error: 'Failed to create corpus', 
+            message: error.message,
+            details: error.response?.data
+        });
+    }
+});
+
+// Delete corpus endpoint
+app.delete('/corpus/:corpusId', async (req, res) => {
+    try {
+        const { corpusId } = req.params;
+        
+        if (!corpusId) {
+            return res.status(400).json({ error: 'Corpus ID is required' });
+        }
+        
+        // Delete the corpus via Ultravox API
+        await axios({
+            method: 'DELETE',
+            url: `${ULTRAVOX_API_URL.replace('/calls', '')}/corpora/${corpusId}`,
+            headers: {
+                'X-API-Key': ULTRAVOX_API_KEY
+            }
+        });
+        
+        res.json({
+            success: true,
+            message: `Corpus ${corpusId} deleted successfully`
+        });
+        
+    } catch (error) {
+        console.error('Error deleting corpus:', error);
+        res.status(500).json({ 
+            error: 'Failed to delete corpus', 
+            message: error.message,
+            details: error.response?.data
+        });
     }
 });
 

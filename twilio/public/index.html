@@ -453,6 +453,132 @@
             justify-content: center;
             margin-top: 10px;
         }
+
+        /* Corpus container styles */
+        .corpus-container {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .corpus-container select {
+            flex-grow: 1;
+            margin-bottom: 0;
+        }
+
+        .corpus-container button {
+            min-width: 36px;
+            height: 36px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+            border-radius: 4px;
+        }
+
+        /* Corpus status indicators in dropdown */
+        .corpus-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .corpus-status-ready {
+            background-color: var(--success);
+        }
+
+        .corpus-status-processing {
+            background-color: orange;
+        }
+
+        .corpus-status-empty {
+            background-color: #555;
+        }
+
+        .corpus-status-error {
+            background-color: var(--error-color);
+        }
+
+        /* Add spacing for corpus help text */
+        .corpus-help-text {
+            margin-top: 10px;
+        }
+
+        .delete-button {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            outline: none;
+            margin-left: 10px;
+        }
+        
+        .delete-button svg {
+            stroke: #777;
+            transition: stroke 0.3s ease;
+        }
+        
+        .delete-button:hover svg {
+            stroke: var(--error-color);
+        }
+        
+        .delete-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .delete-button:disabled svg {
+            stroke: #555;
+        }
+
+        .delete-confirmation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .delete-confirmation-content {
+            background-color: var(--bg-secondary);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .delete-confirmation h3 {
+            margin-top: 0;
+        }
+        
+        .delete-confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .delete-confirmation-buttons button {
+            min-width: 100px;
+        }
+        
+        .cancel-button {
+            background-color: #555;
+        }
+        
+        .confirm-delete-button {
+            background-color: var(--error-color);
+        }
     </style>
 </head>
 <body>
@@ -478,19 +604,34 @@
                 <small class="help-text">Select a voice for the AI assistant</small>
             </div>
             <div>
-                <label for="corpusId">Corpus ID (optional)</label>
-                <input type="text" id="corpusId" name="corpusId" placeholder="Leave empty for no corpus">
-                <small class="help-text">Enter corpus ID or leave empty to disable RAG</small>
+                <label for="corpusId">Knowledge Base Corpus ID (optional)</label>
+                <div class="corpus-container">
+                    <select id="corpusId" name="corpusId">
+                        <option value="">No corpus (RAG disabled)</option>
+                        <!-- Corpus options will be loaded dynamically -->
+                    </select>
+                    <button type="button" id="refreshCorpusBtn" title="Refresh corpus list">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
+                    </button>
+                    <button type="button" id="deleteCorpusBtn" title="Delete selected corpus" class="delete-button" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+                <small class="help-text corpus-help-text">Select a knowledge base corpus or none to disable RAG</small>
             </div>
             <div>
-                <label for="tools">Tools</label>
-                <input type="text" id="tools" name="tools" placeholder="Leave empty to disable tools, or enter comma-separated names (e.g. weather, time)">
-                <small class="help-text">Empty = tools disabled, comma-separated list = specific tools enabled, 'default' = use environment defaults</small>
+                <label for="tools">Tools (optional)</label>
+                <input type="text" id="tools" name="tools" placeholder="Leave empty to disable tools">
+                <small class="help-text">Empty = tools disabled, comma-separated list = specific tools enabled i.e 'hangup,time'</small>
             </div>
             <div>
                 <label for="agentName">Agent Name</label>
                 <input type="text" id="agentName" name="agentName" placeholder="Leave empty to use default (Loddie)">
-                <small class="help-text">Custom name for the AI agent (prepended to prompt)</small>
+                <small class="help-text">The name agent will introduce itself as</small>
             </div>
             <div>
                 <label for="systemPrompt">System Prompt</label>
@@ -499,7 +640,7 @@
 Example: 'You are a helpful assistant that is calling to check on the status of a shipment for order#4432'"></textarea>
             </div>
             <div class="form-group">
-                <button type="submit" id="submitBtn">Start Call<span id="loadingSpinner" class="spinner hidden"></span></button>
+                <button type="submit" id="submitBtn">Initiate Call<span id="loadingSpinner" class="spinner hidden"></span></button>
             </div>
         </form>
         <div id="outboundResult" class="result hidden">
@@ -512,6 +653,46 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                     <button id="copyLinkBtn">Copy</button>
                 </div>
                 <small>Share this link to pre-fill the form with these values</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Corpus Creation Section -->
+    <div class="container">
+        <h2>Create Knowledge Base Corpus</h2>
+        <form id="corpusForm">
+            <div>
+                <label for="corpusName">Corpus Name</label>
+                <input type="text" id="corpusName" name="corpusName" placeholder="MyKnowledgeBase" required>
+            </div>
+            <div>
+                <label for="corpusDescription">Description (optional)</label>
+                <input type="text" id="corpusDescription" name="corpusDescription" placeholder="Description of this knowledge base">
+            </div>
+            <div>
+                <label for="corpusUrls">Website URLs</label>
+                <textarea id="corpusUrls" name="corpusUrls" rows="3" placeholder="https://example.com/page1,&#10;https://github.com/username/repo/README.md,&#10;https://docs.yourdomain.com/info"></textarea>
+                <small class="help-text">Add comma-separated URLs for websites you want to include in this corpus. Best with informative text content like documentation and GitHub README files.</small>
+            </div>
+            <div class="form-group">
+                <button type="submit" id="createCorpusBtn">Create Corpus<span id="corpusLoadingSpinner" class="spinner hidden"></span></button>
+            </div>
+        </form>
+        <div id="corpusResult" class="result hidden">
+            <h3>Corpus Creation Result:</h3>
+            <pre id="corpusResultContent"></pre>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <div id="deleteConfirmation" class="delete-confirmation hidden">
+        <div class="delete-confirmation-content">
+            <h3>Delete Corpus</h3>
+            <p>Are you sure you want to delete the corpus "<span id="deleteCorpusName"></span>"?</p>
+            <p>This action cannot be undone, and all associated data will be permanently deleted.</p>
+            <div class="delete-confirmation-buttons">
+                <button id="cancelDeleteBtn" class="cancel-button">Cancel</button>
+                <button id="confirmDeleteBtn" class="confirm-delete-button">Delete</button>
             </div>
         </div>
     </div>
@@ -649,8 +830,189 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
 
         document.addEventListener('DOMContentLoaded', function() {
             loadVoices();
+            loadCorpora();
             parseURLParams();
+
+            // Refresh corpus button event listener
+            document.getElementById('refreshCorpusBtn').addEventListener('click', function() {
+                loadCorpora();
+            });
+            
+            // Enable/disable delete button based on corpus selection
+            document.getElementById('corpusId').addEventListener('change', function() {
+                const deleteButton = document.getElementById('deleteCorpusBtn');
+                deleteButton.disabled = !this.value;
+            });
+            
+            // Delete corpus button event listener
+            document.getElementById('deleteCorpusBtn').addEventListener('click', function() {
+                const corpusSelect = document.getElementById('corpusId');
+                const corpusId = corpusSelect.value;
+                const corpusName = corpusSelect.options[corpusSelect.selectedIndex].text;
+                
+                if (!corpusId) return;
+                
+                showDeleteConfirmation(corpusId, corpusName);
+            });
+
+            // Corpus form submission handler
+            document.getElementById('corpusForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const corpusName = document.getElementById('corpusName').value;
+                const corpusDescription = document.getElementById('corpusDescription').value;
+                const corpusUrls = document.getElementById('corpusUrls').value;
+                
+                // Get result elements
+                const resultElement = document.getElementById('corpusResult');
+                const resultContentElement = document.getElementById('corpusResultContent');
+                const loadingSpinner = document.getElementById('corpusLoadingSpinner');
+                
+                // Show loading spinner
+                loadingSpinner.classList.remove('hidden');
+                
+                // If result is already visible, add refreshing class for transition
+                if (!resultElement.classList.contains('hidden')) {
+                    resultElement.classList.add('refreshing');
+                    // Wait for animation to complete before updating content
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } else {
+                    // Remove hidden class but keep it invisible with refreshing state
+                    resultElement.classList.remove('hidden');
+                    resultElement.classList.add('refreshing');
+                }
+                
+                try {
+                    const response = await fetch('/create-corpus', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            name: corpusName,
+                            description: corpusDescription,
+                            urls: corpusUrls
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Hide loading spinner
+                    loadingSpinner.classList.add('hidden');
+                    
+                    // Update content while result is still invisible
+                    resultContentElement.textContent = JSON.stringify(data, null, 2);
+                    
+                    // Check if the call failed and apply error styling
+                    if (data.error) {
+                        resultElement.classList.add('error');
+                        resultElement.classList.remove('success');
+                    } else {
+                        resultElement.classList.add('success');
+                        resultElement.classList.remove('error');
+                        
+                        // Refresh the corpus list
+                        loadCorpora();
+                        
+                        // Auto-select the new corpus
+                        setTimeout(() => {
+                            const corpusSelect = document.getElementById('corpusId');
+                            if (data.corpusId) {
+                                for (let i = 0; i < corpusSelect.options.length; i++) {
+                                    if (corpusSelect.options[i].value === data.corpusId) {
+                                        corpusSelect.selectedIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }, 500); // Small delay to allow the corpus list to update
+                    }
+                    
+                    // Show the result with animation
+                    setTimeout(() => {
+                        resultElement.classList.remove('refreshing');
+                    }, 50);
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    
+                    // Hide loading spinner
+                    loadingSpinner.classList.add('hidden');
+                    
+                    // Update content to show error
+                    resultContentElement.textContent = 'Error: ' + error.message;
+                    resultElement.classList.add('error');
+                    resultElement.classList.remove('success');
+                    
+                    // Show the result with animation
+                    setTimeout(() => {
+                        resultElement.classList.remove('refreshing');
+                    }, 50);
+                }
+            });
         });
+
+        async function loadCorpora() {
+            try {
+                const response = await fetch('/list-corpora');
+                const data = await response.json();
+                
+                const corpusSelect = document.getElementById('corpusId');
+                // Keep the first "No corpus" option
+                corpusSelect.innerHTML = '<option value="">No corpus (RAG disabled)</option>';
+                
+                // Sort corpora by name
+                const corpora = data.results || [];
+                corpora.sort((a, b) => a.name.localeCompare(b.name));
+                
+                corpora.forEach(corpus => {
+                    const option = document.createElement('option');
+                    option.value = corpus.corpusId;
+                    
+                    // Create status indicator
+                    let statusClass = 'corpus-status-empty';
+                    let statusText = 'Empty';
+                    
+                    if (corpus.stats.status === 'CORPUS_STATUS_READY') {
+                        statusClass = 'corpus-status-ready';
+                        statusText = 'Ready';
+                    } else if (corpus.stats.status === 'CORPUS_STATUS_INITIALIZING' || corpus.stats.status === 'CORPUS_STATUS_UPDATING') {
+                        statusClass = 'corpus-status-processing';
+                        statusText = 'Processing';
+                    } else if (corpus.stats.status === 'CORPUS_STATUS_ERROR') {
+                        statusClass = 'corpus-status-error';
+                        statusText = 'Error';
+                    }
+                    
+                    // Set option text with docs count if available
+                    const docsCount = corpus.stats.numDocs || 0;
+                    option.innerHTML = `<span class="corpus-status ${statusClass}" title="${statusText}"></span>${corpus.name} (${docsCount} docs)`;
+                    option.title = corpus.description || 'No description';
+                    
+                    corpusSelect.appendChild(option);
+                });
+                
+                // Now that options are loaded, set the corpus if it was in URL params
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('corpus')) {
+                    const corpusId = urlParams.get('corpus');
+                    // Find the option with this value
+                    const option = Array.from(corpusSelect.options).find(opt => opt.value === corpusId);
+                    if (option) {
+                        option.selected = true;
+                    }
+                }
+                
+                // Update delete button state
+                const deleteButton = document.getElementById('deleteCorpusBtn');
+                deleteButton.disabled = !corpusSelect.value;
+                
+            } catch (error) {
+                console.error('Error loading corpora:', error);
+                const corpusSelect = document.getElementById('corpusId');
+                corpusSelect.innerHTML = '<option value="">Error loading corpora</option>';
+            }
+        }
 
         document.getElementById('outboundForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -769,6 +1131,89 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                 alert('Error: ' + error.message);
             }
         });
+
+        // Function to show delete confirmation dialog
+        function showDeleteConfirmation(corpusId, corpusName) {
+            // Set corpus name in confirmation dialog
+            document.getElementById('deleteCorpusName').textContent = corpusName;
+            
+            // Get dialog element and show it
+            const dialog = document.getElementById('deleteConfirmation');
+            dialog.classList.remove('hidden');
+            
+            // Set up event handlers for confirmation buttons
+            document.getElementById('cancelDeleteBtn').onclick = function() {
+                dialog.classList.add('hidden');
+            };
+            
+            document.getElementById('confirmDeleteBtn').onclick = function() {
+                deleteCorpus(corpusId);
+                dialog.classList.add('hidden');
+            };
+        }
+        
+        // Function to delete corpus via API
+        async function deleteCorpus(corpusId) {
+            try {
+                // Get result elements (reuse corpus result area)
+                const resultElement = document.getElementById('corpusResult');
+                const resultContentElement = document.getElementById('corpusResultContent');
+                
+                // Show loading and prepare result area
+                if (!resultElement.classList.contains('hidden')) {
+                    resultElement.classList.add('refreshing');
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } else {
+                    resultElement.classList.remove('hidden');
+                    resultElement.classList.add('refreshing');
+                }
+                
+                // Call delete API
+                const response = await fetch(`/corpus/${corpusId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                // Update result content
+                resultContentElement.textContent = JSON.stringify(data, null, 2);
+                
+                // Apply styling based on success/error
+                if (data.error) {
+                    resultElement.classList.add('error');
+                    resultElement.classList.remove('success');
+                } else {
+                    resultElement.classList.add('success');
+                    resultElement.classList.remove('error');
+                    
+                    // Refresh corpus list after successful deletion
+                    loadCorpora();
+                }
+                
+                // Show result with animation
+                setTimeout(() => {
+                    resultElement.classList.remove('refreshing');
+                }, 50);
+                
+            } catch (error) {
+                console.error('Error deleting corpus:', error);
+                
+                // Get result elements
+                const resultElement = document.getElementById('corpusResult');
+                const resultContentElement = document.getElementById('corpusResultContent');
+                
+                // Update content to show error
+                resultContentElement.textContent = 'Error: ' + error.message;
+                resultElement.classList.add('error');
+                resultElement.classList.remove('success');
+                resultElement.classList.remove('hidden');
+                
+                // Show result with animation
+                setTimeout(() => {
+                    resultElement.classList.remove('refreshing');
+                }, 50);
+            }
+        }
     </script>
 </body>
 </html> 
