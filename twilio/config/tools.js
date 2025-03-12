@@ -48,10 +48,6 @@ for (let i = 1; i <= 10; i++) {
   }
 }
 
-// Log the configuration
-console.log(`🔧 Configured ${Object.keys(tools).length} Ultravox tools`);
-if (Object.keys(tools).length > 0) {
-  console.log('📋 Available tools:', Object.keys(tools).join(', '));
-}
+// Remove logging statements to ensure clean output
 
 export { tools }; 

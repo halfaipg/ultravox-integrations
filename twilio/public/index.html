@@ -69,7 +69,17 @@
             margin-bottom: 20px;
         }
 
-        input, textarea {
+        label {
+            display: block;
+            margin-bottom: 8px;
+            text-align: center;
+            color: var(--text-labels);
+            font-weight: 600;
+            font-size: 1.05em;
+            letter-spacing: 0.5px;
+        }
+
+        input, textarea, select {
             width: 100%;
             padding: 14px;
             margin: 8px 0 22px;
@@ -80,6 +90,19 @@
             color: var(--text-primary);
             transition: all 0.3s ease;
             font-size: 15px;
+            text-align: center;
+        }
+        
+        textarea {
+            text-align: left; /* Keep textarea left-aligned for better readability of multi-line content */
+        }
+        
+        input[type="text"] {
+            font-family: monospace; /* Bring back monospace font for text inputs */
+        }
+        
+        input[type="tel"] {
+            font-family: monospace; /* Apply monospace to telephone inputs too */
         }
 
         input:focus, textarea:focus {
@@ -202,16 +225,6 @@
             margin: 15px 0;
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            text-align: center;
-            color: var(--text-labels);
-            font-weight: 600;
-            font-size: 1.05em;
-            letter-spacing: 0.5px;
-        }
-
         #serverStatus {
             display: inline-block;
             padding: 8px 16px;
@@ -304,31 +317,8 @@
             font-style: italic;
         }
 
-        input[type="text"] {
-            width: 100%;
-            padding: 14px;
-            margin: 8px 0 22px;
-            border: 1px solid var(--bg-secondary);
-            border-radius: 10px;
-            box-sizing: border-box;
-            background-color: rgba(20, 20, 20, 0.8);
-            color: var(--text-primary);
-            font-family: monospace;
-            font-size: 15px;
-        }
-
         select {
-            width: 100%;
-            padding: 14px;
-            margin: 8px 0 22px;
-            border: 1px solid var(--bg-secondary);
-            border-radius: 10px;
-            box-sizing: border-box;
-            background-color: rgba(20, 20, 20, 0.8);
-            color: var(--text-primary);
-            transition: all 0.3s ease;
             cursor: pointer;
-            font-size: 15px;
             appearance: none;
             background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
             background-repeat: no-repeat;
@@ -465,6 +455,7 @@
         .corpus-container select {
             flex-grow: 1;
             margin-bottom: 0;
+            margin-left: 4px;
         }
 
         .corpus-container button {
@@ -476,6 +467,23 @@
             justify-content: center;
             margin-top: 8px;
             border-radius: 4px;
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .corpus-container button svg {
+            stroke: #999;
+            transition: stroke 0.3s ease;
+        }
+
+        #refreshCorpusBtn:hover {
+            background: rgba(76, 175, 80, 0.1);
+            border-color: var(--accent);
+        }
+
+        #refreshCorpusBtn:hover svg {
+            stroke: var(--accent);
         }
 
         /* Corpus status indicators in dropdown */
@@ -510,16 +518,22 @@
 
         .delete-button {
             background: none;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 0;
             cursor: pointer;
             outline: none;
             margin-left: 10px;
+            transition: all 0.3s ease;
         }
         
         .delete-button svg {
-            stroke: #777;
+            stroke: #999;
             transition: stroke 0.3s ease;
+        }
+        
+        .delete-button:hover {
+            background: rgba(244, 67, 54, 0.1);
+            border-color: var(--error-color);
         }
         
         .delete-button:hover svg {
@@ -529,6 +543,7 @@
         .delete-button:disabled {
             opacity: 0.3;
             cursor: not-allowed;
+            border-color: transparent;
         }
         
         .delete-button:disabled svg {
@@ -604,19 +619,19 @@
                 <small class="help-text">Select a voice for the AI assistant</small>
             </div>
             <div>
-                <label for="corpusId">Knowledge Base Corpus ID (optional)</label>
+                <label for="corpusId">Knowledge Base (optional)</label>
                 <div class="corpus-container">
-                    <select id="corpusId" name="corpusId">
-                        <option value="">No corpus (RAG disabled)</option>
-                        <!-- Corpus options will be loaded dynamically -->
-                    </select>
                     <button type="button" id="refreshCorpusBtn" title="Refresh corpus list">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                     </button>
+                    <select id="corpusId" name="corpusId">
+                        <option value="">No corpus (RAG disabled)</option>
+                        <!-- Corpus options will be loaded dynamically -->
+                    </select>
                     <button type="button" id="deleteCorpusBtn" title="Delete selected corpus" class="delete-button" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
                         </svg>
                     </button>
