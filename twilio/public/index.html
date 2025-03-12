@@ -6,6 +6,7 @@
     <title>AI Voice Agent</title>
     <style>
         :root {
+            /* Dark theme (default) */
             --bg-primary: #121212;
             --bg-secondary: #1e1e1e;
             --bg-tertiary: #2d2d2d;
@@ -15,8 +16,66 @@
             --accent-color: #4CAF50;
             --error-color: #f44336;
             --accent: #4CAF50;
-            --accent-hover: #45a049;
+            --accent-hover: #3ea043;
             --success: #00C851;
+            --input-bg: rgba(30, 30, 30, 0.9);
+            --input-border: rgba(60, 60, 60, 0.8);
+            --shadow-subtle: 0 8px 16px rgba(0, 0, 0, 0.4);
+            --shadow-strong: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Light theme */
+        :root.light-mode {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #eaeaea;
+            --text-primary: #121212;
+            --text-secondary: #555555;
+            --text-labels: #333333;
+            --input-bg: rgba(240, 240, 240, 0.9);
+            --input-border: rgba(200, 200, 200, 0.8);
+            --shadow-subtle: 0 8px 16px rgba(0, 0, 0, 0.1);
+            --shadow-strong: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Light mode specific adjustments */
+        :root.light-mode .container {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        :root.light-mode pre {
+            background-color: rgba(0, 0, 0, 0.04);
+            color: #333;
+        }
+
+        :root.light-mode select option {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        :root.light-mode .corpus-container button,
+        :root.light-mode .delete-button {
+            background: rgba(240, 240, 240, 0.9);
+        }
+
+        :root.light-mode .corpus-container button svg,
+        :root.light-mode .delete-button svg {
+            stroke: #555;
+        }
+
+        :root.light-mode .theme-icon svg {
+            stroke: #555;
+        }
+
+        :root.light-mode input:focus, 
+        :root.light-mode textarea:focus, 
+        :root.light-mode select:focus {
+            background-color: rgba(250, 250, 250, 1);
+        }
+
+        /* Add theme transition for smooth switching */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         body {
@@ -37,14 +96,16 @@
             background-color: var(--bg-secondary);
             border-radius: 12px;
             padding: 25px 30px;
-            margin-bottom: 15px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-            transition: transform 0.2s ease;
+            margin-bottom: 22px;
+            box-shadow: var(--shadow-subtle);
+            transition: all 0.3s ease;
             width: 100%;
+            border: 1px solid var(--input-border);
         }
 
         .container:hover {
             transform: translateY(-3px);
+            box-shadow: var(--shadow-strong);
         }
 
         h1, h2 {
@@ -83,14 +144,15 @@
             width: 100%;
             padding: 14px;
             margin: 8px 0 22px;
-            border: 1px solid var(--bg-secondary);
+            border: 1px solid var(--input-border);
             border-radius: 10px;
             box-sizing: border-box;
-            background-color: rgba(20, 20, 20, 0.8);
+            background-color: var(--input-bg);
             color: var(--text-primary);
             transition: all 0.3s ease;
             font-size: 15px;
             text-align: center;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         textarea {
@@ -105,11 +167,11 @@
             font-family: monospace; /* Apply monospace to telephone inputs too */
         }
 
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-            background-color: rgba(25, 25, 25, 1);
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+            background-color: rgba(35, 35, 35, 1);
         }
 
         button {
@@ -117,21 +179,24 @@
             background-color: var(--accent);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 16px;
+            font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.2px;
         }
         
         button:hover {
-            background-color: var(--accent-dark);
+            background-color: var(--accent-hover);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.25);
         }
         
         button:active {
             transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .result {
@@ -252,6 +317,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            position: relative;
         }
 
         .logo-container {
@@ -279,6 +345,7 @@
             margin-top: -15px;
             margin-bottom: 18px;
             text-align: center;
+            opacity: 0.9;
         }
 
         h3 {
@@ -381,8 +448,14 @@
         
         #outboundForm button[type="submit"] {
             min-width: 220px;
-            margin-top: 25px;
+            margin-top: 30px;
             font-size: 1.1em;
+            background: linear-gradient(to bottom right, var(--accent), var(--accent-hover));
+            padding: 14px 28px;
+        }
+        
+        #outboundForm button[type="submit"]:hover {
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
         }
         
         /* Add a subtle divider between form fields */
@@ -455,7 +528,7 @@
         .corpus-container select {
             flex-grow: 1;
             margin-bottom: 0;
-            margin-left: 4px;
+            margin-left: 6px;
         }
 
         .corpus-container button {
@@ -466,20 +539,21 @@
             align-items: center;
             justify-content: center;
             margin-top: 8px;
-            border-radius: 4px;
-            background: none;
+            border-radius: 6px;
+            background: rgba(40, 40, 40, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
         }
 
         .corpus-container button svg {
-            stroke: #999;
+            stroke: #b3b3b3;
             transition: stroke 0.3s ease;
         }
 
         #refreshCorpusBtn:hover {
-            background: rgba(76, 175, 80, 0.1);
+            background: rgba(76, 175, 80, 0.15);
             border-color: var(--accent);
+            transform: translateY(-2px);
         }
 
         #refreshCorpusBtn:hover svg {
@@ -517,7 +591,7 @@
         }
 
         .delete-button {
-            background: none;
+            background: rgba(40, 40, 40, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 0;
             cursor: pointer;
@@ -527,13 +601,14 @@
         }
         
         .delete-button svg {
-            stroke: #999;
+            stroke: #b3b3b3;
             transition: stroke 0.3s ease;
         }
         
         .delete-button:hover {
-            background: rgba(244, 67, 54, 0.1);
+            background: rgba(244, 67, 54, 0.15);
             border-color: var(--error-color);
+            transform: translateY(-2px);
         }
         
         .delete-button:hover svg {
@@ -594,14 +669,124 @@
         .confirm-delete-button {
             background-color: var(--error-color);
         }
+
+        /* Theme Toggle Switch Styles */
+        .theme-switch-wrapper {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            background-color: rgba(0, 0, 0, 0.12);
+            padding: 4px 6px 4px 6px; /* More balanced padding top and bottom */
+            border-radius: 30px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        
+        :root.light-mode .theme-switch-wrapper {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .theme-switch-wrapper:hover {
+            opacity: 1;
+        }
+
+        .theme-switch {
+            display: inline-block;
+            height: 16px;
+            position: relative;
+            width: 32px;
+            margin: 0; /* Reset margin */
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .slider {
+            background-color: rgba(0, 0, 0, 0.5);
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: 0.3s;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            background-color: #fff;
+            bottom: 1px;
+            content: "";
+            height: 14px;
+            left: 2px;
+            position: absolute;
+            transition: 0.3s;
+            width: 14px;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+
+        .theme-icon {
+            margin: 0;
+            font-size: 0.75rem;
+            line-height: 1;
+            opacity: 0.8;
+            position: relative;
+            top: 0px; /* Center the icons */
+        }
+        
+        .theme-icon svg {
+            stroke: #fff;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo-container">
-            <img src="https://brand.aipowergrid.io/_data/i/upload/2024/03/14/20240314185634-06dfd4e5-2s.png" alt="AI Power Grid Logo" class="logo">
+            <img id="appLogo" src="https://brand.aipowergrid.io/_data/i/upload/2024/03/14/20240314185634-06dfd4e5-2s.png" alt="App Logo" class="logo">
         </div>
-        <h1>AI Voice Agent</h1>
+        <h1 id="appName">AI Voice Agent</h1>
+        
+        <!-- Theme toggle switch -->
+        <div class="theme-switch-wrapper">
+            <span class="theme-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </span>
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider"></div>
+            </label>
+            <span class="theme-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </span>
+        </div>
     </div>
 
     <div class="container">
@@ -609,7 +794,8 @@
         <form id="outboundForm">
             <div>
                 <label for="phoneNumber">Phone Number</label>
-                <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+1234567890" required>
+                <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+1234567890" inputmode="tel" pattern="[+]?[0-9\s\-\(\)]{5,}" required>
+                <small class="help-text">Enter phone number in international format (e.g., +12345678900)</small>
             </div>
             <div>
                 <label for="voiceId">Voice</label>
@@ -713,6 +899,110 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
     </div>
 
     <script>
+        // Theme switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleSwitch = document.querySelector('#checkbox');
+            const currentTheme = localStorage.getItem('theme');
+            
+            // Check if user had previously selected a theme
+            if (currentTheme) {
+                document.documentElement.classList.toggle('light-mode', currentTheme === 'light');
+                toggleSwitch.checked = currentTheme === 'light';
+            }
+            
+            // Listen for toggle switch change
+            toggleSwitch.addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    document.documentElement.classList.add('light-mode');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.classList.remove('light-mode');
+                    localStorage.setItem('theme', 'dark');
+                }
+            });
+        });
+        
+        // Fetch configuration
+        async function fetchConfig() {
+            try {
+                const response = await fetch('/config');
+                const config = await response.json();
+                
+                // Update logo and app name
+                const logoElement = document.getElementById('appLogo');
+                if (logoElement && config.logoUrl) {
+                    logoElement.src = config.logoUrl;
+                    logoElement.alt = config.appName || 'App Logo';
+                }
+                
+                const appNameElement = document.getElementById('appName');
+                if (appNameElement && config.appName) {
+                    appNameElement.textContent = config.appName;
+                    document.title = config.appName;
+                }
+                
+                return config;
+            } catch (error) {
+                console.error('Error fetching configuration:', error);
+                return {};
+            }
+        }
+
+        // Function to check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Server status:', data);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Server health check failed:', error);
+                return false;
+            }
+        }
+
+        // Initialize configuration on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Fetch configuration first
+                await fetchConfig();
+                
+                // Load available voices
+                await loadVoices();
+                
+                // Load available corpora
+                await loadCorpora();
+                
+                // Add form submit handler
+                const form = document.getElementById('outboundForm');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        submitOutboundForm(e);
+                    });
+                }
+                
+                // Parse URL parameters
+                parseURLParams();
+                
+                // Set up corpus creation form
+                setupCorpusForm();
+                
+                // Setup refresh button
+                const refreshCorpusBtn = document.getElementById('refreshCorpusBtn');
+                if (refreshCorpusBtn) {
+                    refreshCorpusBtn.addEventListener('click', function() {
+                        loadCorpora(true);
+                    });
+                }
+            } catch (error) {
+                console.error("Error during initialization:", error);
+            }
+        });
+
         // Function to parse URL parameters and fill the form
         function parseURLParams() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -736,7 +1026,7 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                             field.value = decodeURIComponent(urlParams.get(param));
                         } else if (field.tagName === 'SELECT') {
                             // For select elements, we need to wait until options are loaded
-                            // Will be handled in loadVoices function
+                            // This is handled in the loadVoices and loadCorpora functions
                         } else {
                             field.value = decodeURIComponent(urlParams.get(param));
                         }
@@ -798,11 +1088,25 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
 
         async function loadVoices() {
             try {
+                console.log('Loading voices...');
                 const response = await fetch('/voices');
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
                 
                 const voiceSelect = document.getElementById('voiceId');
+                if (!voiceSelect) return;
+                
                 voiceSelect.innerHTML = '<option value="">Default Voice</option>';
+                
+                // Check if we have valid data
+                if (!data.results || !Array.isArray(data.results)) {
+                    console.warn('Invalid voice data format:', data);
+                    return;
+                }
                 
                 // Sort voices by name
                 const voices = data.results.sort((a, b) => a.name.localeCompare(b.name));
@@ -836,201 +1140,244 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                         option.selected = true;
                     }
                 }
+                console.log('Voices loaded successfully');
             } catch (error) {
                 console.error('Error loading voices:', error);
                 const voiceSelect = document.getElementById('voiceId');
-                voiceSelect.innerHTML = '<option value="">Error loading voices</option>';
+                if (voiceSelect) {
+                    voiceSelect.innerHTML = '<option value="">Error loading voices</option>';
+                }
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            loadVoices();
-            loadCorpora();
-            parseURLParams();
-
-            // Refresh corpus button event listener
-            document.getElementById('refreshCorpusBtn').addEventListener('click', function() {
-                loadCorpora();
-            });
-            
-            // Enable/disable delete button based on corpus selection
-            document.getElementById('corpusId').addEventListener('change', function() {
-                const deleteButton = document.getElementById('deleteCorpusBtn');
-                deleteButton.disabled = !this.value;
-            });
-            
-            // Delete corpus button event listener
-            document.getElementById('deleteCorpusBtn').addEventListener('click', function() {
-                const corpusSelect = document.getElementById('corpusId');
-                const corpusId = corpusSelect.value;
-                const corpusName = corpusSelect.options[corpusSelect.selectedIndex].text;
+        async function loadCorpora(refresh = false) {
+            try {
+                console.log('Loading corpora...');
+                const response = await fetch('/list-corpora');
                 
-                if (!corpusId) return;
-                
-                showDeleteConfirmation(corpusId, corpusName);
-            });
-
-            // Corpus form submission handler
-            document.getElementById('corpusForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const corpusName = document.getElementById('corpusName').value;
-                const corpusDescription = document.getElementById('corpusDescription').value;
-                const corpusUrls = document.getElementById('corpusUrls').value;
-                
-                // Get result elements
-                const resultElement = document.getElementById('corpusResult');
-                const resultContentElement = document.getElementById('corpusResultContent');
-                const loadingSpinner = document.getElementById('corpusLoadingSpinner');
-                
-                // Show loading spinner
-                loadingSpinner.classList.remove('hidden');
-                
-                // If result is already visible, add refreshing class for transition
-                if (!resultElement.classList.contains('hidden')) {
-                    resultElement.classList.add('refreshing');
-                    // Wait for animation to complete before updating content
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                } else {
-                    // Remove hidden class but keep it invisible with refreshing state
-                    resultElement.classList.remove('hidden');
-                    resultElement.classList.add('refreshing');
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
                 }
                 
-                try {
-                    const response = await fetch('/create-corpus', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            name: corpusName,
-                            description: corpusDescription,
-                            urls: corpusUrls
-                        })
+                const data = await response.json();
+                console.log('Corpora data:', data);
+                
+                // Get the corpus select element
+                const corpusSelect = document.getElementById('corpusId');
+                if (!corpusSelect) return;
+                
+                // Save the current selection
+                const currentSelected = corpusSelect.value;
+                
+                // Clear existing options except the first one
+                while (corpusSelect.options.length > 1) {
+                    corpusSelect.remove(1);
+                }
+                
+                // Add each corpus as an option
+                if (data.corpora && data.corpora.length > 0) {
+                    data.corpora.forEach(corpus => {
+                        const option = document.createElement('option');
+                        option.value = corpus.id || corpus.corpusId; // Support both property names
+                        
+                        // Add status indicator
+                        let statusClass = '';
+                        if (corpus.stats && corpus.stats.status) {
+                            const status = corpus.stats.status;
+                            if (status === 'CORPUS_STATUS_READY') {
+                                statusClass = 'corpus-status-ready';
+                            } else if (status.includes('PROCESSING')) {
+                                statusClass = 'corpus-status-processing';
+                            } else if (status.includes('ERROR')) {
+                                statusClass = 'corpus-status-error';
+                            } else {
+                                statusClass = 'corpus-status-empty';
+                            }
+                        } else {
+                            statusClass = 'corpus-status-empty';
+                        }
+                        
+                        option.innerHTML = `<span class="corpus-status ${statusClass}"></span> ${corpus.name}`;
+                        corpusSelect.add(option);
                     });
                     
-                    const data = await response.json();
-                    
-                    // Hide loading spinner
-                    loadingSpinner.classList.add('hidden');
-                    
-                    // Update content while result is still invisible
-                    resultContentElement.textContent = JSON.stringify(data, null, 2);
-                    
-                    // Check if the call failed and apply error styling
-                    if (data.error) {
-                        resultElement.classList.add('error');
-                        resultElement.classList.remove('success');
-                    } else {
-                        resultElement.classList.add('success');
-                        resultElement.classList.remove('error');
-                        
-                        // Refresh the corpus list
-                        loadCorpora();
-                        
-                        // Auto-select the new corpus
-                        setTimeout(() => {
-                            const corpusSelect = document.getElementById('corpusId');
-                            if (data.corpusId) {
-                                for (let i = 0; i < corpusSelect.options.length; i++) {
-                                    if (corpusSelect.options[i].value === data.corpusId) {
-                                        corpusSelect.selectedIndex = i;
-                                        break;
-                                    }
-                                }
-                            }
-                        }, 500); // Small delay to allow the corpus list to update
+                    // Restore selection if it exists
+                    if (currentSelected) {
+                        corpusSelect.value = currentSelected;
                     }
-                    
-                    // Show the result with animation
-                    setTimeout(() => {
-                        resultElement.classList.remove('refreshing');
-                    }, 50);
-                    
-                } catch (error) {
-                    console.error('Error:', error);
-                    
-                    // Hide loading spinner
-                    loadingSpinner.classList.add('hidden');
-                    
-                    // Update content to show error
-                    resultContentElement.textContent = 'Error: ' + error.message;
-                    resultElement.classList.add('error');
-                    resultElement.classList.remove('success');
-                    
-                    // Show the result with animation
-                    setTimeout(() => {
-                        resultElement.classList.remove('refreshing');
-                    }, 50);
-                }
-            });
-        });
-
-        async function loadCorpora() {
-            try {
-                const response = await fetch('/list-corpora');
-                const data = await response.json();
-                
-                const corpusSelect = document.getElementById('corpusId');
-                // Keep the first "No corpus" option
-                corpusSelect.innerHTML = '<option value="">No corpus (RAG disabled)</option>';
-                
-                // Sort corpora by name
-                const corpora = data.results || [];
-                corpora.sort((a, b) => a.name.localeCompare(b.name));
-                
-                corpora.forEach(corpus => {
-                    const option = document.createElement('option');
-                    option.value = corpus.corpusId;
-                    
-                    // Create status indicator
-                    let statusClass = 'corpus-status-empty';
-                    let statusText = 'Empty';
-                    
-                    if (corpus.stats.status === 'CORPUS_STATUS_READY') {
-                        statusClass = 'corpus-status-ready';
-                        statusText = 'Ready';
-                    } else if (corpus.stats.status === 'CORPUS_STATUS_INITIALIZING' || corpus.stats.status === 'CORPUS_STATUS_UPDATING') {
-                        statusClass = 'corpus-status-processing';
-                        statusText = 'Processing';
-                    } else if (corpus.stats.status === 'CORPUS_STATUS_ERROR') {
-                        statusClass = 'corpus-status-error';
-                        statusText = 'Error';
-                    }
-                    
-                    // Set option text with docs count if available
-                    const docsCount = corpus.stats.numDocs || 0;
-                    option.innerHTML = `<span class="corpus-status ${statusClass}" title="${statusText}"></span>${corpus.name} (${docsCount} docs)`;
-                    option.title = corpus.description || 'No description';
-                    
-                    corpusSelect.appendChild(option);
-                });
-                
-                // Now that options are loaded, set the corpus if it was in URL params
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.has('corpus')) {
-                    const corpusId = urlParams.get('corpus');
-                    // Find the option with this value
-                    const option = Array.from(corpusSelect.options).find(opt => opt.value === corpusId);
-                    if (option) {
-                        option.selected = true;
-                    }
+                } else {
+                    console.log('No corpora found or invalid data format:', data);
                 }
                 
-                // Update delete button state
+                // Enable/disable delete button based on selection
                 const deleteButton = document.getElementById('deleteCorpusBtn');
+                if (!deleteButton) return;
+                
                 deleteButton.disabled = !corpusSelect.value;
                 
+                // Add event listeners if they don't exist
+                if (!corpusSelect.hasAttribute('data-listeners-added')) {
+                    // Enable/disable delete button based on corpus selection
+                    corpusSelect.addEventListener('change', function() {
+                        const deleteBtn = document.getElementById('deleteCorpusBtn');
+                        if (deleteBtn) {
+                            deleteBtn.disabled = !this.value;
+                        }
+                    });
+                    
+                    // Mark that we've added listeners
+                    corpusSelect.setAttribute('data-listeners-added', 'true');
+                }
+                
+                // Setup delete button listener if not already setup
+                if (deleteButton && !deleteButton.hasAttribute('data-listeners-added')) {
+                    // Delete corpus button event listener
+                    deleteButton.addEventListener('click', function() {
+                        const corpusSelect = document.getElementById('corpusId');
+                        if (!corpusSelect) return;
+                        
+                        const corpusId = corpusSelect.value;
+                        if (!corpusId) return;
+                        
+                        const selectedOption = corpusSelect.options[corpusSelect.selectedIndex];
+                        const corpusName = selectedOption ? selectedOption.text : 'Unknown';
+                        
+                        showDeleteConfirmation(corpusId, corpusName);
+                    });
+                    
+                    // Mark that we've added listeners
+                    deleteButton.setAttribute('data-listeners-added', 'true');
+                }
+                
+                // Refresh the corpus list if it's a manual refresh
+                if (refresh) {
+                    setTimeout(() => {
+                        loadCorpora();
+                    }, 500);
+                }
+                
+                console.log('Corpora loaded successfully');
             } catch (error) {
                 console.error('Error loading corpora:', error);
                 const corpusSelect = document.getElementById('corpusId');
-                corpusSelect.innerHTML = '<option value="">Error loading corpora</option>';
+                if (corpusSelect) {
+                    // Keep the first "No corpus" option but add an error message
+                    while (corpusSelect.options.length > 1) {
+                        corpusSelect.remove(1);
+                    }
+                    const option = document.createElement('option');
+                    option.value = "";
+                    option.textContent = "Error loading corpora";
+                    option.disabled = true;
+                    corpusSelect.add(option);
+                }
+            }
+        }
+        
+        function setupCorpusForm() {
+            // Corpus form submission handler
+            const corpusForm = document.getElementById('corpusForm');
+            if (corpusForm) {
+                corpusForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const corpusName = document.getElementById('corpusName').value;
+                    const corpusDescription = document.getElementById('corpusDescription').value;
+                    const corpusUrls = document.getElementById('corpusUrls').value;
+                    
+                    // Get result elements
+                    const resultElement = document.getElementById('corpusResult');
+                    const resultContentElement = document.getElementById('corpusResultContent');
+                    const loadingSpinner = document.getElementById('corpusLoadingSpinner');
+                    
+                    // Show loading spinner
+                    loadingSpinner.classList.remove('hidden');
+                    
+                    // If result is already visible, add refreshing class for transition
+                    if (!resultElement.classList.contains('hidden')) {
+                        resultElement.classList.add('refreshing');
+                        // Wait for animation to complete before updating content
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    } else {
+                        // Remove hidden class but keep it invisible with refreshing state
+                        resultElement.classList.remove('hidden');
+                        resultElement.classList.add('refreshing');
+                    }
+                    
+                    try {
+                        const response = await fetch('/create-corpus', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                name: corpusName,
+                                description: corpusDescription,
+                                urls: corpusUrls
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        // Hide loading spinner
+                        loadingSpinner.classList.add('hidden');
+                        
+                        // Update content while result is still invisible
+                        resultContentElement.textContent = JSON.stringify(data, null, 2);
+                        
+                        // Check if the call failed and apply error styling
+                        if (data.error) {
+                            resultElement.classList.add('error');
+                            resultElement.classList.remove('success');
+                        } else {
+                            resultElement.classList.add('success');
+                            resultElement.classList.remove('error');
+                            
+                            // Refresh the corpus list
+                            loadCorpora();
+                            
+                            // Auto-select the new corpus
+                            setTimeout(() => {
+                                const corpusSelect = document.getElementById('corpusId');
+                                if (data.corpusId) {
+                                    for (let i = 0; i < corpusSelect.options.length; i++) {
+                                        if (corpusSelect.options[i].value === data.corpusId) {
+                                            corpusSelect.selectedIndex = i;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }, 500); // Small delay to allow the corpus list to update
+                        }
+                        
+                        // Show the result with animation
+                        setTimeout(() => {
+                            resultElement.classList.remove('refreshing');
+                        }, 50);
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        
+                        // Hide loading spinner
+                        loadingSpinner.classList.add('hidden');
+                        
+                        // Update content to show error
+                        resultContentElement.textContent = 'Error: ' + error.message;
+                        resultElement.classList.add('error');
+                        resultElement.classList.remove('success');
+                        
+                        // Show the result with animation
+                        setTimeout(() => {
+                            resultElement.classList.remove('refreshing');
+                        }, 50);
+                    }
+                });
             }
         }
 
-        document.getElementById('outboundForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Handle the outbound form submission
+        async function submitOutboundForm(e) {
+            if (e) e.preventDefault();
             
             const phoneNumber = document.getElementById('phoneNumber').value;
             const systemPrompt = document.getElementById('systemPrompt').value;
@@ -1044,6 +1391,11 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
             const resultContentElement = document.getElementById('outboundResultContent');
             const shareableLinkContainer = document.getElementById('shareableLinkContainer');
             const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            if (!resultElement || !resultContentElement || !loadingSpinner) {
+                console.error('Required DOM elements not found');
+                return;
+            }
             
             // Show loading spinner
             loadingSpinner.classList.remove('hidden');
@@ -1077,6 +1429,10 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                     })
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
                 
                 // Hide loading spinner
@@ -1095,32 +1451,37 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                 }
                 
                 // Generate shareable link
-                const baseUrl = window.location.origin + window.location.pathname;
-                let shareableLink = baseUrl + '?';
-                
-                // Only add parameters that have values
-                if (phoneNumber) shareableLink += 'phone=' + encodeURIComponent(phoneNumber) + '&';
-                if (voiceId) shareableLink += 'voice=' + encodeURIComponent(voiceId) + '&';
-                if (corpusId) shareableLink += 'corpus=' + encodeURIComponent(corpusId) + '&';
-                if (tools) shareableLink += 'tools=' + encodeURIComponent(tools) + '&';
-                if (agentName) shareableLink += 'agent=' + encodeURIComponent(agentName) + '&';
-                if (systemPrompt) shareableLink += 'prompt=' + encodeURIComponent(systemPrompt);
-                
-                // Remove trailing '&' if needed
-                if (shareableLink.endsWith('&')) {
-                    shareableLink = shareableLink.slice(0, -1);
+                if (shareableLinkContainer) {
+                    const baseUrl = window.location.origin + window.location.pathname;
+                    let shareableLink = baseUrl + '?';
+                    
+                    // Only add parameters that have values
+                    if (phoneNumber) shareableLink += 'phone=' + encodeURIComponent(phoneNumber) + '&';
+                    if (voiceId) shareableLink += 'voice=' + encodeURIComponent(voiceId) + '&';
+                    if (corpusId) shareableLink += 'corpus=' + encodeURIComponent(corpusId) + '&';
+                    if (tools) shareableLink += 'tools=' + encodeURIComponent(tools) + '&';
+                    if (agentName) shareableLink += 'agent=' + encodeURIComponent(agentName) + '&';
+                    if (systemPrompt) shareableLink += 'prompt=' + encodeURIComponent(systemPrompt);
+                    
+                    // Remove trailing '&' if needed
+                    if (shareableLink.endsWith('&')) {
+                        shareableLink = shareableLink.slice(0, -1);
+                    }
+                    
+                    const shareableLinkInput = document.getElementById('shareableLink');
+                    if (shareableLinkInput) {
+                        shareableLinkInput.value = shareableLink;
+                        shareableLinkContainer.classList.remove('hidden');
+                        
+                        // Make sure only one event listener is attached
+                        const copyLinkBtn = document.getElementById('copyLinkBtn');
+                        if (copyLinkBtn) {
+                            copyLinkBtn.onclick = function() {
+                                copyToClipboard(shareableLink);
+                            };
+                        }
+                    }
                 }
-                
-                const shareableLinkInput = document.getElementById('shareableLink');
-                
-                shareableLinkInput.value = shareableLink;
-                shareableLinkContainer.classList.remove('hidden');
-                
-                // Make sure only one event listener is attached
-                const copyLinkBtn = document.getElementById('copyLinkBtn');
-                copyLinkBtn.onclick = function() {
-                    copyToClipboard(shareableLink);
-                };
                 
                 // Show the result with animation
                 setTimeout(() => {
@@ -1128,7 +1489,7 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                 }, 50);
                 
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error submitting form:', error);
                 
                 // Hide loading spinner
                 loadingSpinner.classList.add('hidden');
@@ -1142,10 +1503,8 @@ Example: 'You are a helpful assistant that is calling to check on the status of 
                 setTimeout(() => {
                     resultElement.classList.remove('refreshing');
                 }, 50);
-                
-                alert('Error: ' + error.message);
             }
-        });
+        }
 
         // Function to show delete confirmation dialog
         function showDeleteConfirmation(corpusId, corpusName) {

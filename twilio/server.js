@@ -25,6 +25,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 const PORT = process.env.PORT || 3000;
 const VOICE_PROVIDER = process.env.VOICE_PROVIDER || 'twilio';
 
+// UI Configuration
+const UI_LOGO_URL = process.env.UI_LOGO_URL || 'https://brand.aipowergrid.io/_data/i/upload/2024/03/14/20240314185634-06dfd4e5-2s.png';
+const UI_APP_NAME = process.env.UI_APP_NAME || 'AI Voice Agent';
+
 // Twilio configuration
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -449,6 +453,15 @@ app.get('/health', (req, res) => {
 // Home route with basic information
 app.get('/', (req, res) => {
     res.send(`Ultravox Voice Integration Server. Using ${VOICE_PROVIDER.toUpperCase()} as the provider. Use /incoming for incoming calls and /outgoing for outgoing calls.`);
+});
+
+// UI Configuration endpoint
+app.get('/config', (req, res) => {
+    res.json({
+        logoUrl: UI_LOGO_URL,
+        appName: UI_APP_NAME,
+        provider: VOICE_PROVIDER.toUpperCase()
+    });
 });
 
 // Update the incoming call handler for both Twilio and Telnyx
@@ -930,12 +943,14 @@ app.post('/callback', (req, res) => {
 // Add this before the other route definitions
 app.get('/voices', async (req, res) => {
     try {
+        console.log('Fetching voices from Ultravox API...');
         const response = await new Promise((resolve, reject) => {
             const request = https.request(`${ULTRAVOX_API_URL.replace('/calls', '')}/voices`, {
                 method: 'GET',
                 headers: {
                     'X-API-Key': ULTRAVOX_API_KEY
-                }
+                },
+                timeout: 10000 // 10 second timeout
             });
 
             let data = '';
@@ -944,6 +959,11 @@ app.get('/voices', async (req, res) => {
                 response.on('data', chunk => data += chunk);
                 response.on('end', () => {
                     try {
+                        if (response.statusCode !== 200) {
+                            reject(new Error(`Ultravox API returned status ${response.statusCode}`));
+                            return;
+                        }
+                        
                         const voices = JSON.parse(data);
                         resolve(voices);
                     } catch (error) {
@@ -953,33 +973,48 @@ app.get('/voices', async (req, res) => {
             });
 
             request.on('error', reject);
+            request.on('timeout', () => {
+                request.destroy();
+                reject(new Error('Request timed out'));
+            });
+            
             request.end();
         });
 
         res.json(response);
     } catch (error) {
         console.error('Error fetching voices:', error);
-        res.status(500).json({ error: 'Failed to fetch voices' });
+        res.status(500).json({ 
+            error: 'Failed to fetch voices', 
+            message: error.message,
+            results: [] // Always provide an empty results array for the frontend
+        });
     }
 });
 
 // Corpus Management Endpoints
 app.get('/list-corpora', async (req, res) => {
     try {
+        console.log('Fetching corpora from Ultravox API...');
         const response = await axios({
             method: 'GET',
             url: `${ULTRAVOX_API_URL.replace('/calls', '')}/corpora`,
             headers: {
                 'X-API-Key': ULTRAVOX_API_KEY
-            }
+            },
+            timeout: 10000 // 10 second timeout
         });
         
-        res.json(response.data);
+        res.json({
+            success: true,
+            corpora: response.data.results || []
+        });
     } catch (error) {
         console.error('Error listing corpora:', error);
         res.status(500).json({ 
             error: 'Failed to list corpora', 
-            message: error.message 
+            message: error.message,
+            corpora: [] // Always provide an empty corpora array for the frontend
         });
     }
 });
